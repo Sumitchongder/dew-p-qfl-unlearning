@@ -211,9 +211,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the PR checklist.
   `table05_forgetting_comparison.csv`). This is disclosed rather than
   smoothed over, in line with the ablation-honesty goals in the paper.
 - Every figure and table is regenerated from `results/json/*.json` by
-  `scripts/generate_deliverables.py`   nothing under `results/figures/` or
-  `results/tables/` is hand-edited. If you change the pipeline, regenerate
-  rather than patching outputs directly.
+  `scripts/generate_deliverables.py`.
 
 ## Citation
 
