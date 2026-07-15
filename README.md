@@ -40,25 +40,25 @@ produced by the code in `src/`, with no hand-edited figures or tables.
 
 ## What's in this repository
 
-- **`src/qflewp/`** — the full method implementation: a data re-uploading
+- **`src/qflewp/`**   the full method implementation: a data re-uploading
   variational quantum circuit simulated in NumPy, a FedAvg federated
   trainer using exact parameter-shift gradients, a parameter-shift diagonal
   Quantum Fisher Information estimator, a per-gate von Neumann entanglement
   weighting scheme, the pruning/unlearning algorithms (proposed method +
   5 baselines), and a full evaluation suite (utility, membership-inference
   based forgetting, retrain-distance).
-- **`scripts/`** — thin, documented CLI entry points that call into
-  `src/qflewp/` — no logic lives in the scripts themselves.
-- **`hpc/slurm/`** — a four-stage SLURM job chain for running the full
+- **`scripts/`**   thin, documented CLI entry points that call into
+  `src/qflewp/`   no logic lives in the scripts themselves.
+- **`hpc/slurm/`**   a four-stage SLURM job chain for running the full
   experiment suite at publication scale on a shared cluster.
-- **`results/`** — every figure (`figures/`, PNG + PDF), table
+- **`results/`**   every figure (`figures/`, PNG + PDF), table
   (`tables/`, CSV + a combined Markdown export), and raw run artifact
   (`json/`) referenced in the paper, already generated and version
   controlled so you can inspect them without running anything.
-- **`tests/`** — fast (~15 s) correctness checks: circuit unitarity, QFIM
+- **`tests/`**   fast (~15 s) correctness checks: circuit unitarity, QFIM
   client-dependence, entanglement-weight differentiation, and exact
   pruning-fraction behavior.
-- **`docs/METHODOLOGY.md`** — the exact formulas and configuration schema
+- **`docs/METHODOLOGY.md`**   the exact formulas and configuration schema
   used by the code, for readers extending or auditing it.
 
 ## Quickstart
@@ -130,7 +130,7 @@ python3 scripts/generate_deliverables.py                   # all 16 figures + 10
 Every stage reads/writes plain JSON or CSV under `results/`, so you can
 inspect, diff, or version-control intermediate results, and re-run only
 the stage you changed. All experiment hyperparameters are CLI flags on
-`run_main_experiment.py` — see `docs/METHODOLOGY.md#7` for the full schema.
+`run_main_experiment.py`   see `docs/METHODOLOGY.md#7` for the full schema.
 
 Default configuration runs in roughly 30-45 minutes on a single modern CPU
 core. Scale seeds/rounds/samples up for tighter confidence intervals; see
@@ -180,7 +180,7 @@ Headline comparison (3 seeds, mean ± std), from
 A paired t-test (`results/tables/table08_statistical_significance.csv`)
 finds no statistically significant utility gap between DEW-P and the
 full-retrain oracle, while DEW-P significantly outperforms all three
-single-signal pruning baselines — at roughly 16x the speed of a full
+single-signal pruning baselines   at roughly 16x the speed of a full
 retrain.
 
 ## Extending this codebase
@@ -211,7 +211,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the PR checklist.
   `table05_forgetting_comparison.csv`). This is disclosed rather than
   smoothed over, in line with the ablation-honesty goals in the paper.
 - Every figure and table is regenerated from `results/json/*.json` by
-  `scripts/generate_deliverables.py` — nothing under `results/figures/` or
+  `scripts/generate_deliverables.py`   nothing under `results/figures/` or
   `results/tables/` is hand-edited. If you change the pipeline, regenerate
   rather than patching outputs directly.
 
