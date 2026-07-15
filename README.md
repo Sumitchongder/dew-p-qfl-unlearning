@@ -12,7 +12,7 @@ repository computes a per-parameter importance score that combines
 parameter, conditioned on the forgotten client's data) with **circuit
 entanglement structure** (how structurally load-bearing that parameter's
 gate is), prunes the least important parameters, and briefly re-optimizes
-the survivors — producing a model statistically indistinguishable from a
+the survivors, producing a model statistically indistinguishable from a
 full from-scratch retrain, at a fraction of the compute cost.
 
 This repository is the companion code for the paper *"Dynamic
