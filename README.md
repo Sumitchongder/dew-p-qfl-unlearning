@@ -18,7 +18,7 @@ full from-scratch retrain, at a fraction of the compute cost.
 This repository is the companion code for the paper *"Dynamic
 Entanglement-Weighted Pruning for QFL-Based Supply Chain Risk Unlearning."*
 It is built to be run, not just read: every number in `results/` is
-produced by the code in `src/`, with no hand-edited figures or tables.
+produced by the code in `src/`.
 
 ---
 
