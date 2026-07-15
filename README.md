@@ -15,10 +15,7 @@ gate is), prunes the least important parameters, and briefly re-optimizes
 the survivors, producing a model statistically indistinguishable from a
 full from-scratch retrain, at a fraction of the compute cost.
 
-This repository is the companion code for the paper *"Dynamic
-Entanglement-Weighted Pruning for QFL-Based Supply Chain Risk Unlearning."*
-It is built to be run, not just read: every number in `results/` is
-produced by the code in `src/`.
+The released repository includes complete source code, experiment scripts, HPC submission scripts, generated figures and tables, and documentation sufficient to reproduce the published workflow.
 
 ---
 
