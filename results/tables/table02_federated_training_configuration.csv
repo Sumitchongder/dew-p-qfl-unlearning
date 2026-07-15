@@ -1,0 +1,13 @@
+Parameter,Value
+Ansatz,Data re-uploading VQC (RX encode -> RY -> ring-CNOT -> RZ)
+Qubits,4
+Layers,3
+Trainable parameters,24
+Feature encoding scale (rad),0.5
+Federated rounds,6
+Local optimizer,L-BFGS-B (exact parameter-shift gradient)
+Local iterations / round,16
+Aggregation rule,"FedAvg, weighted by client sample count"
+Gradient estimator,Exact parameter-shift rule (Pauli generators)
+Random seeds,"0, 1, 2"
+"Prune fraction (tau, default)",0.2

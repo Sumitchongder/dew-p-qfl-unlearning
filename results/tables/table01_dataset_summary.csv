@@ -1,0 +1,10 @@
+Parameter,Value
+Number of clients,5
+Samples per client,180
+Train / test split,75% / 25%
+Feature dimensionality,4
+Non-IID strength (client bias scale),0.9
+Label noise (logistic std),0.2
+Forgotten client ID,0
+Task,Binary supply-chain risk classification
+Data generation,"Synthetic, seeded (seed = 1000 + run seed)"

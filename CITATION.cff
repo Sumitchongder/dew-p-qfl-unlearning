@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use this software or the accompanying results, please cite it as below."
+title: "DEW-P: Dynamic Entanglement-Weighted Pruning for Quantum Federated Unlearning in Supply-Chain Risk Prediction"
+type: software
+authors:
+  - family-names: "Chongder"
+    given-names: "Sumit Tapas"
+    affiliation: "Indian Institute of Technology Jodhpur"
+version: 1.0.0
+date-released: 2026-07-14
+license: MIT
+repository-code: "https://github.com/<your-username>/dew-p-qfl-unlearning"
+keywords:
+  - quantum machine learning
+  - quantum federated learning
+  - machine unlearning
+  - quantum Fisher information
+  - variational quantum circuits
+  - supply chain risk prediction
+  - privacy-preserving machine learning
