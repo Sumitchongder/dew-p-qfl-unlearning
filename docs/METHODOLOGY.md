@@ -3,7 +3,7 @@
 This document specifies the exact formulas and implementation choices used
 by `src/qflewp/`, for readers who want to verify or extend the code without
 reading the full manuscript. It is written as software documentation
-(what the code computes and why), not as a paper narrative — see the
+(what the code computes and why), not as a paper narrative   see the
 manuscript for motivation, related work, and discussion.
 
 ## 1. Circuit model (`circuit.py`)
@@ -62,8 +62,8 @@ F_kk(x) = ( 1 - |<psi(theta; x) | psi(theta + pi * e_k; x)>|^2 ) / 4
 F_kk^(j) = mean_{x in D_j} F_kk(x)
 ```
 
-This is exact, not a finite-difference approximation, and — because the
-circuit re-encodes `x` at every layer — genuinely conditions on the
+This is exact, not a finite-difference approximation, and   because the
+circuit re-encodes `x` at every layer   genuinely conditions on the
 forgotten client's data distribution, which is what the pruning score
 requires.
 
@@ -106,8 +106,8 @@ score vectors, plus two non-pruning baselines:
 | `fisher_only_pruning` | `F_kk` | isolates the QFIM signal |
 | `entanglement_only_pruning` | `w_ent` | isolates the entanglement signal |
 | `random_pruning` | uniform random, seeded | naive control |
-| `fine_tune_only` | — (no pruning) | a few extra FedAvg rounds on retained clients |
-| `full_retrain_oracle` | — (no pruning) | FedAvg trained from scratch, excluded client never participates |
+| `fine_tune_only` |   (no pruning) | a few extra FedAvg rounds on retained clients |
+| `full_retrain_oracle` |   (no pruning) | FedAvg trained from scratch, excluded client never participates |
 
 An optional `recovery_fine_tune` step re-optimizes only the *surviving*
 (non-pruned) parameters on retained-client data after pruning, keeping
@@ -116,7 +116,7 @@ pruned parameters frozen at exactly zero.
 ## 6. Evaluation suite (`evaluate.py`)
 
 - **Utility**: accuracy and AUROC on retained-client test data, computed
-  from the model's actual `predict_proba` output — not resampled or
+  from the model's actual `predict_proba` output   not resampled or
   simulated.
 - **Forgetting / privacy**: a confidence-thresholding membership-inference
   attack. The attacker sees prediction-confidence scores
