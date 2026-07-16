@@ -22,7 +22,7 @@ make test
 
 ## Before opening a pull request
 
-1. Run `make test` — all existing tests must pass.
+1. Run `make test`   all existing tests must pass.
 2. Run `make lint` and address any new warnings you introduced.
 3. If you change any scientific component (`src/qflewp/circuit.py`,
    `qfim.py`, `entanglement.py`, `pruning.py`, `evaluate.py`), add or update
@@ -34,6 +34,6 @@ make test
 
 ## Code style
 
-Plain, explicit numpy/scipy — no hidden magic. Prefer readability over
+Plain, explicit numpy/scipy   no hidden magic. Prefer readability over
 cleverness; this codebase is read by reviewers checking scientific claims,
 not just by other engineers.
