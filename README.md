@@ -194,7 +194,7 @@ retrain.
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the PR checklist.
 
-## Reproducibility and honesty notes
+## Reproducibility 
 
 - The default configuration uses **3 random seeds** for the main benchmark
   (compute-budget constrained for interactive reproduction). The
