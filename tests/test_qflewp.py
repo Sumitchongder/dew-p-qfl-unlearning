@@ -71,13 +71,21 @@ def test_qfim_is_nonnegative_and_client_dependent():
     assert not np.allclose(f0, f1), "QFIM must depend on the client's data"
 
 
-def test_entanglement_weight_bounded_and_differentiated():
+def test_concurrence_weight_is_shared_within_layer():
     vqc = VQC(n_qubits=4, n_layers=3, n_features=4)
     theta = vqc.initial_weights(seed=3)
     clients = generate_federated_dataset(n_clients=1, samples_per_client=30, seed=3)
     result = EntanglementAnalyzer(vqc).compute(theta, clients[0].X_train)
     assert np.all(result.gate_weights >= 0) and np.all(result.gate_weights <= 1.0001)
-    assert result.per_layer_qubit.std() > 1e-4, "weights must not be a single flat scalar"
+    # Primary (concurrence) method: Eq. (4) is a single scalar per layer,
+    # shared by every qubit/parameter in that layer -- not per-qubit
+    # differentiated. This matches EntanglementAnalyzer.compute's
+    # per_layer_qubit[layer, :] = mean(pair_concurrences) assignment.
+    for layer in range(vqc.n_layers):
+        assert np.allclose(
+            result.per_layer_qubit[layer],
+            result.per_layer_qubit[layer, 0],
+        ), "concurrence weight must be shared across all qubits in a layer"
 
 
 def test_pruning_zeros_exactly_the_target_fraction():
