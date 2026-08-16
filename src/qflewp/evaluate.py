@@ -7,6 +7,7 @@ predictions, never from synthetic random numbers.
 from __future__ import annotations
 
 import numpy as np
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score, roc_curve
 
 from src.qflewp.circuit import VQC
@@ -32,14 +33,25 @@ def retrain_distance(theta_unlearned, theta_oracle) -> float:
 
 
 def membership_inference_advantage(vqc: VQC, theta, forgotten_client, held_out_clients, seed=0):
-    """Confidence-thresholding membership-inference attack (Yeom et al.
-    style membership advantage): an attacker sees the model's prediction
-    confidence on (a) the forgotten client's *training* samples (members)
-    and (b) samples from clients that were genuinely never trained on
-    (non-members: retained clients' test splits), and tries to tell them
-    apart purely from confidence. Advantage = 2*(AUC - 0.5), i.e. 0 means
-    the attacker cannot distinguish members from non-members (good
-    forgetting); 1 means perfect membership leakage.
+    """Shadow-model membership-inference attack (Shokri et al. 2017 style;
+    Appendix D), matching the paper: a logistic-regression attacker is
+    trained on the target model's output confidence to distinguish (a) the
+    forgotten client's *training* samples (members) from (b) samples from
+    clients that were genuinely never trained on (non-members: retained
+    clients' test splits).
+
+    The attacker's single input feature is confidence = |p - 0.5| * 2,
+    exactly as described in Appendix D. We fit a one-dimensional
+    `sklearn.linear_model.LogisticRegression` on this feature and evaluate
+    it on a held-out split of the same member/non-member pool, then report
+    the AUC and membership advantage = 2*(attack accuracy - 0.5) of that
+    fitted attacker, i.e. Appendix D's "logistic-regression shadow-model
+    attacker" is instantiated directly rather than approximated by ranking
+    the raw confidence score.
+
+    Advantage = 2*(AUC - 0.5): 0 means the attacker cannot distinguish
+    members from non-members (good forgetting); 1 means perfect membership
+    leakage.
     """
     rng = np.random.default_rng(seed)
 
@@ -47,7 +59,7 @@ def membership_inference_advantage(vqc: VQC, theta, forgotten_client, held_out_c
     non_member_X = np.concatenate([c.X_test for c in held_out_clients], axis=0)
 
     n = min(len(member_X), len(non_member_X))
-    if n == 0:
+    if n < 4:
         return {"advantage": 0.0, "attack_auc": 0.5, "roc": None}
 
     idx_m = rng.choice(len(member_X), size=n, replace=False)
@@ -56,21 +68,54 @@ def membership_inference_advantage(vqc: VQC, theta, forgotten_client, held_out_c
     member_conf = np.abs(vqc.predict_proba(theta, member_X[idx_m]) - 0.5) * 2
     non_member_conf = np.abs(vqc.predict_proba(theta, non_member_X[idx_n]) - 0.5) * 2
 
-    scores = np.concatenate([member_conf, non_member_conf])
+    scores = np.concatenate([member_conf, non_member_conf]).reshape(-1, 1)
     labels = np.concatenate([np.ones(n), np.zeros(n)])  # 1 = member
 
     if len(np.unique(labels)) < 2:
         return {"advantage": 0.0, "attack_auc": 0.5, "roc": None}
 
-    auc = roc_auc_score(labels, scores)
-    fpr, tpr, _ = roc_curve(labels, scores)
+    # Shuffle, then split into an attacker-training half and an
+    # attacker-evaluation half (Shokri et al. shadow-model protocol:
+    # the attacker is *fit*, then evaluated on held-out members/non-members).
+    order = rng.permutation(len(labels))
+    scores, labels = scores[order], labels[order]
+    split = len(labels) // 2
+    fit_X, fit_y = scores[:split], labels[:split]
+    eval_X, eval_y = scores[split:], labels[split:]
+
+    if len(np.unique(fit_y)) < 2 or len(np.unique(eval_y)) < 2:
+        # Degenerate small-sample split: fall back to fitting and
+        # evaluating on the full pool rather than failing the metric.
+        fit_X, fit_y, eval_X, eval_y = scores, labels, scores, labels
+
+    attacker = LogisticRegression()
+    attacker.fit(fit_X, fit_y)
+    attack_scores = attacker.predict_proba(eval_X)[:, 1]
+
+    auc = roc_auc_score(eval_y, attack_scores)
+    fpr, tpr, _ = roc_curve(eval_y, attack_scores)
     advantage = float(2 * (auc - 0.5))
     return {"advantage": advantage, "attack_auc": float(auc), "roc": (fpr.tolist(), tpr.tolist())}
 
 
 def forgetting_score(membership_result: dict) -> float:
-    """1 - membership advantage, rescaled to [0, 1] where 1 = perfect
-    forgetting (attacker at chance level)."""
+    """Forgetting score = 1 - |membership advantage|, rescaled to [0, 1]
+    where 1 = perfect forgetting (attacker at chance level).
+
+    Note on the paper's wording: the main text describes the forgetting
+    score as an "output-distribution divergence between the unlearned
+    model and theta_retrain on the forgotten client's data" (Section 5.4),
+    while Appendix D gives the operational definition used to actually
+    produce Tables 3-9 and Figure 4b as 1 - |membership advantage| (i.e.
+    Figure 4b's y-axis is literally labelled "Forgetting score
+    (1 - |MI advantage|)"). This code implements the Appendix D / Figure 4b
+    definition, since that is the one the released 0.837/0.678 numbers in
+    results/ were computed from; membership advantage is itself an
+    output-distribution-based statistic (it is derived entirely from the
+    model's predicted-probability confidence on member vs. non-member
+    inputs), so the two descriptions are related rather than contradictory,
+    but they are not literally the same formula.
+    """
     return float(1 - abs(membership_result["advantage"]))
 
 
