@@ -20,10 +20,13 @@ against the current source tree.
 Subsequent code corrections (the QFIM `/4`-factor fix, removal of the
 NumPy simulation backend so the circuit is simulated in Qiskit only, the
 default switch from von Neumann entropy to concurrence in the
-entanglement weight, the Appendix-C-exact dataset generator, and the
+entanglement weight, the Appendix-C-exact dataset generator, the
 logistic-regression shadow-model membership-inference attacker matching
-Appendix D) are maintained in `src/qflewp/` for future experiments and
-extensions, and are documented in `docs/METHODOLOGY.md`. The exact
+Appendix D, and the addition of a separate `forgetting_output_divergence`
+metric implementing Section 5.4's output-distribution-divergence wording
+literally alongside the `forgetting_score` metric that actually produced
+the numbers below) are maintained in `src/qflewp/` for future experiments
+and extensions, and are documented in `docs/METHODOLOGY.md`. The exact
 configuration that produced the numbers in this directory is recorded in
 `configs/paper_v1.yaml`.
 
