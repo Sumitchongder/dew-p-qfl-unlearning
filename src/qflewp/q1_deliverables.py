@@ -510,11 +510,11 @@ def fig16_entanglement_heatmap(raw):
     im = ax.imshow(per_lq, cmap="viridis", aspect="auto")
     ax.set_xlabel("Qubit"); ax.set_ylabel("Layer")
     ax.set_xticks(range(per_lq.shape[1])); ax.set_yticks(range(per_lq.shape[0]))
-    ax.set_title("Per-gate entanglement weight $w_{ent}(k)$\n(single-qubit von Neumann entropy)")
+    ax.set_title("Per-layer entanglement weight $w_{ent}(k)$\n(mean pairwise concurrence, Eq. 4)")
     for i in range(per_lq.shape[0]):
         for j in range(per_lq.shape[1]):
             ax.text(j, i, f"{per_lq[i,j]:.2f}", ha="center", va="center", color="white", fontsize=8.5)
-    fig.colorbar(im, ax=ax, label="Entropy (bits)")
+    fig.colorbar(im, ax=ax, label="Concurrence")
     fig.tight_layout()
     savefig(fig, "fig16_entanglement_heatmap")
 
