@@ -38,18 +38,18 @@ The released repository includes complete source code, experiment scripts, HPC s
 
 ## What's in this repository
 
-- **`src/qflewp/`**   the full method implementation: a data re-uploading
-  variational quantum circuit with interchangeable Qiskit (`backend="qiskit"`,
-  matching the manuscript's stated implementation) and validated-equivalent
-  NumPy (`backend="numpy"`, used as a fast path for sweeps) statevector
-  simulators, a FedAvg federated trainer using exact parameter-shift
-  gradients, a parameter-shift diagonal Quantum Fisher Information
-  estimator, a per-gate entanglement weighting scheme (mean pairwise
-  Wootters concurrence by default, matching the paper's Eq. (4); von
-  Neumann entropy available as the paper's Appendix A.2 ablation), the
+- **`src/qflewp/`**   the full method implementation: a data-generation
+  module following the manuscript's Appendix C generative procedure
+  exactly, a data re-uploading variational quantum circuit simulated
+  entirely in Qiskit (matching the manuscript's stated implementation --
+  there is no alternate backend), a FedAvg federated trainer using exact
+  parameter-shift gradients, a parameter-shift diagonal Quantum Fisher
+  Information estimator, a per-gate entanglement weighting scheme (mean
+  pairwise Wootters concurrence by default, matching the paper's Eq. (4);
+  von Neumann entropy available as the paper's Appendix A.2 ablation), the
   pruning/unlearning algorithms (proposed method + 5 baselines), and a full
-  evaluation suite (utility, membership-inference based forgetting,
-  retrain-distance).
+  evaluation suite (utility, a logistic-regression shadow-model
+  membership-inference attack matching Appendix D, retrain-distance).
 - **`scripts/`**   thin, documented CLI entry points that call into
   `src/qflewp/`   no logic lives in the scripts themselves.
 - **`hpc/slurm/`**   a four-stage SLURM job chain for running the full
@@ -89,7 +89,8 @@ python3 scripts/run_main_experiment.py --seeds 0 --n-rounds 3 --local-maxiter 8
 ```
 dew-p-qfl-unlearning/
 ├── src/qflewp/                  # method implementation (see docs/METHODOLOGY.md)
-│   ├── circuit.py                 # data re-uploading VQC, Qiskit (default) + NumPy statevector sim
+│   ├── data.py                    # supply-chain dataset generator (Appendix C generative procedure)
+│   ├── circuit.py                 # data re-uploading VQC, Qiskit statevector sim (only backend)
 │   ├── data.py                    # synthetic non-IID supply-chain dataset generator
 │   ├── federated.py                # FedAvg + exact parameter-shift gradients
 │   ├── qfim.py                    # parameter-shift diagonal QFIM estimator
@@ -175,10 +176,11 @@ The `results/` directory contains the frozen artifacts associated with the
 arXiv-submitted manuscript (accuracy 0.837, Tables 3-9, Figures 4-16).
 These files are intentionally preserved and are **not** overwritten by
 subsequent implementation corrections. The current source code includes
-corrected QFIM and entanglement implementations, together with
-Qiskit/NumPy backend verification, for future experiments and extensions;
-see `docs/METHODOLOGY.md` for the distinction between the historical
-manuscript configuration and the current default configuration.
+corrected QFIM, entanglement, data-generation, and membership-inference
+implementations, together with a Qiskit-only circuit backend, for future
+experiments and extensions; see `docs/METHODOLOGY.md` for the distinction
+between the historical manuscript configuration and the current default
+configuration.
 
 ## Results at a glance
 
@@ -247,3 +249,4 @@ The authors also acknowledge the collaborative research environment provided thr
 ## License
 
 Released under the [MIT License](LICENSE).
+
