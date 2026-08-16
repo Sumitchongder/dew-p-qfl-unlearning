@@ -39,7 +39,7 @@ def reconstruct_seed(seed_result: dict, cfg: dict) -> dict:
         n_features=cfg["n_features"], non_iid_strength=cfg["non_iid_strength"],
         noise=cfg["noise"], seed=1000 + seed,
     )
-    vqc = VQC(n_qubits=cfg["n_qubits"], n_layers=cfg["n_layers"], n_features=cfg["n_features"])
+    vqc = VQC(n_qubits=cfg["n_qubits"], n_layers=cfg["n_layers"], n_features=cfg["n_features"], backend="numpy")
 
     theta_full = np.array(seed_result["theta_full"])
     theta_oracle = np.array(seed_result["theta_oracle"])
