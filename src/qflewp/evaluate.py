@@ -98,22 +98,37 @@ def membership_inference_advantage(vqc: VQC, theta, forgotten_client, held_out_c
     return {"advantage": advantage, "attack_auc": float(auc), "roc": (fpr.tolist(), tpr.tolist())}
 
 
-def forgetting_score(membership_result: dict) -> float:
-    """Forgetting score used for every reported result in this repository
-    (Tables 3-9, Figure 4b):
+def forgetting_score(vqc: VQC, theta, theta_oracle, forgotten_client) -> float:
+    """Forgetting score, matching the paper's own definition of this metric
+    (Section 5.4: "a forgetting score computed as the output-distribution
+    divergence between the unlearned model and the full-retraining oracle
+    on the forgotten client's data, where lower values indicate a closer
+    match to exact unlearning"; Appendix D: "the mean absolute difference
+    between the unlearned model's and the oracle model's predicted risk
+    probabilities on the forgotten client's held-out instances").
 
-        forgetting_score = 1 - |membership_advantage|
+        forgetting_score = mean_x |p_theta(x) - p_theta_oracle(x)|,
+        x in forgotten_client.X_test
 
-    Higher values indicate stronger forgetting under this metric (1.0 =
-    the membership-inference attacker performs at chance). This is the
-    exact formula that produced the released results/ numbers, e.g.
-    1 - |-0.322| = 0.678 (QFL-EWP) and 1 - |-0.204| = 0.796 (full
-    retraining), matching Table 3. It is intentionally left unchanged here
-    -- results/ is frozen (see results/README.md), so altering this
-    formula would silently invalidate every forgetting-score number and
-    p-value already committed to the repository.
+    Lower is better (Table 3's "Forgetting \u2193"): a value near 0 means the
+    unlearned model's predictions on the forgotten client's data are
+    indistinguishable from a model that never saw that client, i.e. close
+    to exact unlearning.
+
+    NOTE: an earlier revision of this function computed
+    `1 - |membership_advantage|` instead -- a membership-inference-derived
+    quantity that does not correspond to any formula stated in the paper,
+    and whose own "higher is better" semantics directly contradicted the
+    "Forgetting \u2193" (lower-is-better) column header used throughout the
+    paper's tables and text (e.g. "producing a lower forgetting score ...
+    than the oracle" cited as an improvement). That mismatch has been
+    corrected here; membership-inference results are reported separately
+    via `membership_inference_advantage` / `attack_auc` (Table 5), which is
+    unaffected by this change.
     """
-    return float(1 - abs(membership_result["advantage"]))
+    prob = vqc.predict_proba(theta, forgotten_client.X_test)
+    prob_oracle = vqc.predict_proba(theta_oracle, forgotten_client.X_test)
+    return float(np.mean(np.abs(prob - prob_oracle)))
 
 
 def evaluate_method(vqc, theta, theta_oracle, retained_clients, forgotten_client, seed=0):
@@ -125,8 +140,9 @@ def evaluate_method(vqc, theta, theta_oracle, retained_clients, forgotten_client
     return {
         "utility_accuracy": utility_accuracy(vqc, theta, X_ret, y_ret),
         "utility_auroc": utility_auroc(vqc, theta, X_ret, y_ret),
-        # forgetting_score = 1 - |membership_advantage|; see docstring above.
-        "forgetting_score": forgetting_score(mi),
+        # forgetting_score = mean |p - p_oracle| on the forgotten client's
+        # held-out data (Section 5.4 / Appendix D); see docstring above.
+        "forgetting_score": forgetting_score(vqc, theta, theta_oracle, forgotten_client),
         "membership_advantage": mi["advantage"],
         "attack_auc": mi["attack_auc"],
         "retrain_distance": retrain_distance(theta, theta_oracle),
