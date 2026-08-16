@@ -39,12 +39,17 @@ The released repository includes complete source code, experiment scripts, HPC s
 ## What's in this repository
 
 - **`src/qflewp/`**   the full method implementation: a data re-uploading
-  variational quantum circuit simulated in NumPy, a FedAvg federated
-  trainer using exact parameter-shift gradients, a parameter-shift diagonal
-  Quantum Fisher Information estimator, a per-gate von Neumann entanglement
-  weighting scheme, the pruning/unlearning algorithms (proposed method +
-  5 baselines), and a full evaluation suite (utility, membership-inference
-  based forgetting, retrain-distance).
+  variational quantum circuit with interchangeable Qiskit (`backend="qiskit"`,
+  matching the manuscript's stated implementation) and validated-equivalent
+  NumPy (`backend="numpy"`, used as a fast path for sweeps) statevector
+  simulators, a FedAvg federated trainer using exact parameter-shift
+  gradients, a parameter-shift diagonal Quantum Fisher Information
+  estimator, a per-gate entanglement weighting scheme (mean pairwise
+  Wootters concurrence by default, matching the paper's Eq. (4); von
+  Neumann entropy available as the paper's Appendix A.2 ablation), the
+  pruning/unlearning algorithms (proposed method + 5 baselines), and a full
+  evaluation suite (utility, membership-inference based forgetting,
+  retrain-distance).
 - **`scripts/`**   thin, documented CLI entry points that call into
   `src/qflewp/`   no logic lives in the scripts themselves.
 - **`hpc/slurm/`**   a four-stage SLURM job chain for running the full
@@ -84,11 +89,11 @@ python3 scripts/run_main_experiment.py --seeds 0 --n-rounds 3 --local-maxiter 8
 ```
 dew-p-qfl-unlearning/
 ├── src/qflewp/                  # method implementation (see docs/METHODOLOGY.md)
-│   ├── circuit.py                 # data re-uploading VQC, NumPy statevector sim
+│   ├── circuit.py                 # data re-uploading VQC, Qiskit (default) + NumPy statevector sim
 │   ├── data.py                    # synthetic non-IID supply-chain dataset generator
 │   ├── federated.py                # FedAvg + exact parameter-shift gradients
 │   ├── qfim.py                    # parameter-shift diagonal QFIM estimator
-│   ├── entanglement.py            # per-gate von Neumann entanglement weights
+│   ├── entanglement.py            # per-gate entanglement weights (concurrence default, entropy ablation)
 │   ├── pruning.py                 # EWP + 5 baselines
 │   ├── evaluate.py                # utility / forgetting / retrain-distance metrics
 │   ├── pipeline.py                # main N-seed benchmark orchestration
@@ -152,13 +157,28 @@ s_k = w_ent(k) * F_kk^(j)
 
 where `F_kk^(j)` is the diagonal Quantum Fisher Information entry for
 parameter `k`, estimated via the exact parameter-shift rule and averaged
-over client `j`'s own data, and `w_ent(k)` is the von Neumann entanglement
-entropy generated at the point in the circuit where parameter `k`'s gate
-sits. Parameters with the lowest `s_k` are pruned (set to zero, equivalent
-to replacing the gate with the identity), and the surviving parameters are
-briefly re-optimized on the retained clients only. Full formulas, the
-gradient/QFIM derivations, and the five baseline methods this is compared
-against are documented in [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md).
+over client `j`'s own data (Eq. (3), no `/4` factor, matching the
+manuscript exactly), and `w_ent(k)` is the mean pairwise Wootters
+concurrence across the CNOT-coupled qubit pairs of the layer parameter
+`k`'s gate sits in (Eq. (4); the von Neumann entropy variant from Appendix
+A.2 is available as `EntanglementAnalyzer(vqc, method="von_neumann_entropy")`).
+Parameters with the lowest `s_k` are pruned (reset to a fixed reference
+value, equivalent to replacing the gate with the identity), and the
+surviving parameters are briefly re-optimized on the retained clients
+only. Full formulas, the gradient/QFIM derivations, and the five baseline
+methods this is compared against are documented in
+[`docs/METHODOLOGY.md`](docs/METHODOLOGY.md).
+
+## Reproducibility note
+
+The `results/` directory contains the frozen artifacts associated with the
+arXiv-submitted manuscript (accuracy 0.837, Tables 3-9, Figures 4-16).
+These files are intentionally preserved and are **not** overwritten by
+subsequent implementation corrections. The current source code includes
+corrected QFIM and entanglement implementations, together with
+Qiskit/NumPy backend verification, for future experiments and extensions;
+see `docs/METHODOLOGY.md` for the distinction between the historical
+manuscript configuration and the current default configuration.
 
 ## Results at a glance
 
