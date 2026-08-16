@@ -101,6 +101,21 @@ circuit re-encodes `x` at every layer   genuinely conditions on the
 forgotten client's data distribution, which is what the pruning score
 requires.
 
+**Evaluation cost.** `DiagonalQFIM.estimate` computes one reference-state
+batch `forward_full(theta, X)` (the unshifted state), then loops over the
+`P` trainable parameters, computing one shifted-state batch
+`forward_full(theta + pi*e_k, X)` per parameter -- i.e. `P` shifted
+evaluations reusing the single cached reference state, not `2` circuit
+evaluations per parameter. For a batch of `B` inputs this is
+`B * (P + 1)` state preparations in total (one reference pass per input,
+plus one shifted pass per parameter per input), before any
+simulator-level optimizations. This matches the manuscript's own reported
+QFIM circuit-evaluation counts in Table 9 (18, 24, 30, 36 for `P` = 18,
+24, 30, 36 at 3-6 qubits, i.e. `= P`, not `2P`); an earlier version of
+this document described the cost as "two circuit evaluations per
+parameter per input", which overcounted the shared reference state and
+has been corrected here.
+
 ## 4. Entanglement weight (`entanglement.py`)
 
 **Primary definition (`method="concurrence"`, the default -- matches the
