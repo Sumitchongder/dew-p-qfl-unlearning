@@ -58,9 +58,17 @@ estimated via the parameter-shift / state-overlap identity (Stokes et al.,
 "Quantum Natural Gradient", *Quantum* 4, 269 (2020)):
 
 ```
-F_kk(x) = ( 1 - |<psi(theta; x) | psi(theta + pi * e_k; x)>|^2 ) / 4
+F_kk(x) = 1 - |<psi(theta; x) | psi(theta + pi * e_k; x)>|^2
 F_kk^(j) = mean_{x in D_j} F_kk(x)
 ```
+
+(No `/4` factor -- this matches the manuscript's Eq. (3) exactly. An
+earlier revision of this module included a `/4` scaling sometimes used for
+the quantum geometric tensor; since pruning only depends on the *ranking*
+of `F_kk` values against a fraction-based threshold, that constant never
+changed which parameters were pruned or any reported accuracy/forgetting
+number, but it did disagree with the paper's stated formula, so it has been
+removed.)
 
 This is exact, not a finite-difference approximation, and   because the
 circuit re-encodes `x` at every layer   genuinely conditions on the
@@ -69,21 +77,40 @@ requires.
 
 ## 4. Entanglement weight (`entanglement.py`)
 
-For a parameter `k` on qubit `q` in layer `l`, `w_ent(k)` is the single-qubit
-von Neumann entropy of qubit `q`'s reduced density matrix, evaluated
-immediately after layer `l`'s ring-CNOT block (i.e. at the point in the
-circuit where that layer's entanglement has just been generated), averaged
-over a representative client-data batch:
+**Primary definition (`method="concurrence"`, the default -- matches the
+manuscript's Eq. (4)):** for a parameter `k` in layer `l`, `w_ent(k)` is the
+mean pairwise Wootters concurrence across the CNOT-coupled qubit pairs of
+that layer, evaluated on the state immediately after layer `l`'s ring-CNOT
+block, averaged over a representative client-data batch:
+
+```
+rho_ab = Tr_{not a,b}( |psi><psi| )           # for each CNOT-coupled pair (a, b)
+w_ent(k) = mean_{(a,b) in pairs(l)} Concurrence(rho_ab)
+```
+
+Because this is a mean over every CNOT-coupled pair in the layer, it is a
+single scalar shared by *every* trainable parameter in that layer -- both
+the `RY` (applied before the entangler) and `RZ` (applied after) parameters,
+on every qubit -- not a per-qubit quantity.
+
+**Ablation definition (`method="von_neumann_entropy"`, paper Appendix
+A.2):** for a parameter `k` on qubit `q` in layer `l`, the single-qubit
+von Neumann entropy of qubit `q`'s reduced density matrix at the same point
+in the circuit:
 
 ```
 rho_q = Tr_{not q}( |psi><psi| )
 w_ent(k) = -sum_i lambda_i log2(lambda_i)     # eigenvalues of rho_q
 ```
 
-Both the `RY` parameter (applied before the entangler) and the `RZ`
-parameter (applied after) for qubit `q` in layer `l` receive the same
-weight, reflecting that both gates shape the amplitude/phase feeding into
-(or shaped by) that layer's entangling operation on that qubit.
+This variant *is* qubit-specific: both the `RY` and `RZ` parameters for
+qubit `q` in layer `l` receive the same weight, but different qubits within
+a layer can differ. The paper reports the two definitions as strongly
+correlated and notes the choice does not qualitatively change the pruning
+conclusions -- but only one of them can be the score actually used in
+Eq. (5)/Table 3-9, so the code now defaults to concurrence to match the
+manuscript's main text (an earlier revision defaulted to the entropy
+variant instead).
 
 ## 5. Pruning score and unlearning methods (`pruning.py`)
 
