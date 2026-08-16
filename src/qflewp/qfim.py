@@ -24,6 +24,16 @@ statevector |psi(theta; x)> depends on the input x. Averaging F_kk(x) over
 a target client j's samples gives a genuinely client-conditioned diagonal
 QFIM entry F_kk^(j), which is what the EWP pruning score requires — the
 previous implementation (cos^2(theta)) had no such dependence.
+
+Evaluation cost: `estimate()` computes a single reference-state batch
+(the unshifted forward_full(theta, X)) once, then one shifted-state batch
+per trainable parameter (forward_full(theta + pi*e_k, X)), reusing the
+cached reference state for the overlap rather than re-preparing it per
+parameter. For a batch of B inputs and P trainable parameters this is
+B*(P+1) total state preparations, i.e. P circuit evaluations per input
+plus the one shared reference pass -- not 2P. This matches the paper's
+own Table 9 QFIM circuit-evaluation counts (= P, e.g. 24 for P=24 at
+n_qubits=4), not 2P.
 """
 
 from __future__ import annotations
