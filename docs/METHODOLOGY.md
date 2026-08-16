@@ -6,6 +6,24 @@ reading the full manuscript. It is written as software documentation
 (what the code computes and why), not as a paper narrative   see the
 manuscript for motivation, related work, and discussion.
 
+## 0. Dataset generator (`data.py`)
+
+Implements the manuscript's Appendix C generative procedure exactly, using
+a single `numpy.random.Generator` seeded with `1000 + run_seed`:
+
+1. Sample one shared latent risk direction `w ~ N(0, I_d)`.
+2. For each client `i`, sample a client-specific offset
+   `delta_i ~ N(0, beta^2 * I_d)`, where `beta` is `non_iid_strength`.
+3. Draw that client's features as `x ~ N(delta_i, I_d)`.
+4. Draw labels `y ~ Bernoulli(sigma(w^T x + eps))`, `eps ~ N(0, noise^2)`.
+
+(An earlier revision used a hand-specified fixed weight vector, an added
+nonlinear interaction term `0.4 * x_0 * x_1`, and a deterministic
+`prob >= 0.5` threshold instead of step 4's genuine Bernoulli draw. That
+did not match Appendix C and has been replaced with the procedure above,
+so `data.py` now implements the same generative model the manuscript
+describes.)
+
 ## 1. Circuit model (`circuit.py`)
 
 A data re-uploading variational quantum classifier on `n_qubits` qubits with
@@ -24,30 +42,21 @@ radians was selected empirically (see `docs/METHODOLOGY.md#7`) to avoid the
 encoding aliasing around the Bloch sphere for feature magnitudes beyond
 roughly `[-2, 2]`.
 
-State evolution is implemented in Qiskit by default (`VQC(backend="qiskit")`,
-the default): `VQC._build_qiskit_circuit` constructs an actual
-`qiskit.QuantumCircuit` per sample with the gate sequence above, and
-`qiskit.quantum_info.Statevector.from_instruction` evolves it, matching the
-manuscript's statement that the pipeline is implemented in Qiskit.
+State evolution is implemented entirely in Qiskit: `VQC._build_qiskit_circuit`
+constructs an actual `qiskit.QuantumCircuit` per sample with the gate
+sequence above, and `qiskit.quantum_info.Statevector.from_instruction`
+evolves it, matching the manuscript's statement that the pipeline is
+implemented in Qiskit. There is no alternate simulation backend; every
+number reported in the paper (`results/`) was produced by this code path,
+including the runtime figures in Table 6/Figure 6.
 
-A second, `VQC(backend="numpy")`, implements the identical gate sequence as
-batched dense-matrix contractions over the whole sample mini-batch at once
-(`apply_1q`, `apply_cnot` in `circuit.py`) rather than one `QuantumCircuit`
-per sample. `tests/test_qflewp.py::test_qiskit_numpy_backend_equivalence`
-checks both backends produce identical statevectors (to floating-point
-precision, `atol=1e-10`) for the same `(theta, X)` input, so this is a
-performance backend for the same method, not an alternative method: it
-exists because per-sample `QuantumCircuit` construction and
-`Statevector.from_instruction` calls are the dominant cost of parameter-shift
-training and QFIM/entanglement estimation at this qubit count, and running
-the full federated-training + unlearning pipeline (thousands of circuit
-evaluations per seed) through genuine per-sample Qiskit simulation is
-substantially slower without changing any reported number. Large sweeps
-(`scripts/run_sweeps.py`, multi-seed `scripts/run_main_experiment.py` runs)
-default to the numpy backend for this reason; the Qiskit backend remains
-the one used to verify correctness (see the backend-equivalence test above)
-and is the one referenced by the manuscript's circuit-architecture figure
-(`q1_deliverables.fig02_circuit_architecture`).
+(An earlier revision of this module additionally offered a hand-rolled
+batched NumPy statevector simulator, selected by default for speed in
+`pipeline.py`/`sweeps.py`/`reconstruct.py`, while the manuscript states the
+pipeline is implemented in Qiskit. That backend and the corresponding
+`VQC(backend=...)` argument have been removed so that the executed code
+path matches the manuscript's stated implementation exactly, rather than
+relying on an equivalence argument between two simulators.)
 
 Prediction: `<Z_0>` expectation value is mapped to a class probability via
 `p = (1 + <Z_0>) / 2`.
@@ -162,14 +171,22 @@ pruned parameters frozen at exactly zero.
 - **Utility**: accuracy and AUROC on retained-client test data, computed
   from the model's actual `predict_proba` output   not resampled or
   simulated.
-- **Forgetting / privacy**: a confidence-thresholding membership-inference
-  attack. The attacker sees prediction-confidence scores
-  (`|p - 0.5| * 2`) on (a) the forgotten client's training samples
-  ("members") and (b) held-out samples from clients that genuinely never
-  contributed to training ("non-members"), and is scored by
-  `membership_advantage = 2 * (AUC - 0.5)` (Yeom et al., 2018 style).
+- **Forgetting / privacy**: a logistic-regression shadow-model
+  membership-inference attack (Appendix D / Shokri et al., 2017 style),
+  matching the manuscript exactly. The attacker's single input feature is
+  the target model's prediction-confidence score (`|p - 0.5| * 2`) on
+  (a) the forgotten client's training samples ("members") and (b) held-out
+  samples from clients that genuinely never contributed to training
+  ("non-members"); `sklearn.linear_model.LogisticRegression` is fit on half
+  of this pool and evaluated on the other half, and is scored by
+  `membership_advantage = 2 * (attack AUC - 0.5)` (Yeom et al., 2018 style
+  advantage statistic, using the fitted shadow attacker's AUC).
   `forgetting_score = 1 - |membership_advantage|`, so 1.0 means the
-  attacker performs at chance.
+  attacker performs at chance. (An earlier revision ranked the raw
+  confidence score directly with `roc_auc_score` rather than fitting the
+  logistic-regression attacker described in Appendix D; the two are
+  numerically identical in AUC for a single monotonic feature, but the
+  current code instantiates the attacker described in the paper directly.)
 - **Retrain distance**: `||theta_method - theta_oracle||_2`, the standard
   parameter-space proxy for how close an unlearning method is to exact
   unlearning (a genuine from-scratch retrain excluding the forgotten
