@@ -1,150 +1,140 @@
 """
-Evaluation suite (Table 3 in the paper): utility, forgetting / membership
-inference, and retrain distance — computed from the *actual* trained model's
-predictions, never from synthetic random numbers.
+Reconstructs per-method predictions, confusion matrices, and timings from
+the already-trained models saved in main_experiment_raw.json (theta_full,
+theta_oracle, qfim_diag, entanglement_weights are all deterministic given
+the stored seed, so no retraining of the shared federated model is
+needed — only the cheap per-method pruning/eval steps are recomputed here,
+plus a fresh timing pass for the full-retrain oracle since its cost has to
+be measured, not just its resulting parameters).
 """
-
 from __future__ import annotations
 
+import json
+import time
+from pathlib import Path
+
 import numpy as np
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import roc_auc_score, roc_curve
+from sklearn.metrics import confusion_matrix, roc_curve, roc_auc_score
 
 from src.qflewp.circuit import VQC
+from src.qflewp.data import generate_federated_dataset
+from src.qflewp.federated import fedavg_train
+from src.qflewp.pruning import (
+    ewp_pruning, fisher_only_pruning, entanglement_only_pruning, random_pruning,
+    fine_tune_only, recovery_fine_tune, full_retrain_oracle,
+)
+from src.qflewp.evaluate import (
+    utility_accuracy, utility_auroc, retrain_distance, membership_inference_advantage,
+    forgetting_score,
+)
+
+RESULTS = Path("results/json/main_experiment_raw.json")
+OUT_JSON = Path("results/json/extended_experiment.json")
 
 
-def utility_accuracy(vqc: VQC, theta, X, y) -> float:
-    prob = vqc.predict_proba(theta, X)
-    pred = (prob >= 0.5).astype(int)
-    return float(np.mean(pred == y))
+def reconstruct_seed(seed_result: dict, cfg: dict) -> dict:
+    seed = seed_result["seed"]
+    clients = generate_federated_dataset(
+        n_clients=cfg["n_clients"], samples_per_client=cfg["samples_per_client"],
+        n_features=cfg["n_features"], non_iid_strength=cfg["non_iid_strength"],
+        noise=cfg["noise"], seed=1000 + seed,
+    )
+    vqc = VQC(n_qubits=cfg["n_qubits"], n_layers=cfg["n_layers"], n_features=cfg["n_features"])
+
+    theta_full = np.array(seed_result["theta_full"])
+    theta_oracle = np.array(seed_result["theta_oracle"])
+    f_kk = np.array(seed_result["qfim_diag"])
+    w_ent = np.array(seed_result["entanglement_weights"])
+
+    forgotten = clients[cfg["forget_client"]]
+    retained = [c for c in clients if c.client_id != cfg["forget_client"]]
+    X_ret = np.concatenate([c.X_test for c in retained])
+    y_ret = np.concatenate([c.y_test for c in retained])
+
+    frac = cfg["prune_fraction"]
+    methods = {}
+
+    # ---- pruning-based methods: cheap, deterministic given stored arrays ----
+    def timed_eval(name, theta_method):
+        t0 = time.perf_counter()
+        prob = vqc.predict_proba(theta_method, X_ret)
+        pred = (prob >= 0.5).astype(int)
+        elapsed = time.perf_counter() - t0
+        mi = membership_inference_advantage(vqc, theta_method, forgotten, retained, seed=seed)
+        return {
+            "y_true": y_ret.tolist(), "y_pred": pred.tolist(), "y_prob": prob.tolist(),
+            "confusion_matrix": confusion_matrix(y_ret, pred, labels=[0, 1]).tolist(),
+            "accuracy": utility_accuracy(vqc, theta_method, X_ret, y_ret),
+            "auroc": utility_auroc(vqc, theta_method, X_ret, y_ret),
+            "membership_advantage": mi["advantage"], "attack_auc": mi["attack_auc"],
+            # forgetting_score = mean |p - p_oracle| on the forgotten
+            # client's held-out data (Section 5.4 / Appendix D of the
+            # paper), NOT a function of the membership-inference result.
+            "forgetting_score": forgetting_score(vqc, theta_method, theta_oracle, forgotten),
+            "roc": mi["roc"],
+            "retrain_distance": retrain_distance(theta_method, theta_oracle),
+            "inference_seconds": elapsed,
+        }
+
+    t0 = time.perf_counter()
+    rnd = random_pruning(theta_full, fraction=frac, seed=seed)
+    rnd_time = time.perf_counter() - t0
+    r = timed_eval("Random Pruning", rnd.pruned_weights); r["unlearn_seconds"] = rnd_time
+    methods["Random Pruning"] = r
+
+    t0 = time.perf_counter()
+    fis = fisher_only_pruning(theta_full, f_kk, fraction=frac)
+    fis_time = time.perf_counter() - t0
+    r = timed_eval("Fisher-only Pruning", fis.pruned_weights); r["unlearn_seconds"] = fis_time
+    methods["Fisher-only Pruning"] = r
+
+    t0 = time.perf_counter()
+    ento = entanglement_only_pruning(theta_full, w_ent, fraction=frac)
+    ento_time = time.perf_counter() - t0
+    r = timed_eval("Entanglement-only Pruning", ento.pruned_weights); r["unlearn_seconds"] = ento_time
+    methods["Entanglement-only Pruning"] = r
+
+    t0 = time.perf_counter()
+    ft_theta = fine_tune_only(vqc, theta_full, retained, rounds=2, maxiter=10)
+    ft_time = time.perf_counter() - t0
+    r = timed_eval("Fine-Tune Only", ft_theta); r["unlearn_seconds"] = ft_time
+    methods["Fine-Tune Only"] = r
+
+    t0 = time.perf_counter()
+    ewp = ewp_pruning(theta_full, f_kk, w_ent, fraction=frac)
+    ewp_theta = recovery_fine_tune(vqc, ewp.pruned_weights, ewp.mask, retained, rounds=2, maxiter=10)
+    ewp_time = time.perf_counter() - t0
+    r = timed_eval("QFL-EWP", ewp_theta); r["unlearn_seconds"] = ewp_time
+    methods["QFL-EWP"] = r
+
+    # ---- Full retrain oracle: the expensive baseline; time it for real ----
+    t0 = time.perf_counter()
+    theta_oracle_fresh = full_retrain_oracle(
+        vqc, clients, excluded_client=cfg["forget_client"],
+        n_rounds=cfg["n_rounds"], local_epochs=cfg["local_maxiter"], seed=seed,
+    )
+    oracle_time = time.perf_counter() - t0
+    r = timed_eval("Full Retrain (oracle)", theta_oracle_fresh); r["unlearn_seconds"] = oracle_time
+    methods["Full Retrain (oracle)"] = r
+
+    return {"seed": seed, "methods": methods}
 
 
-def utility_auroc(vqc: VQC, theta, X, y) -> float:
-    prob = vqc.predict_proba(theta, X)
-    if len(np.unique(y)) < 2:
-        return float("nan")
-    return float(roc_auc_score(y, prob))
+def run(cfg=None):
+    with open(RESULTS) as f:
+        raw = json.load(f)
+    cfg = cfg or raw["config"]
+
+    extended = {"config": cfg, "results": []}
+    for seed_result in raw["results"]:
+        print("reconstructing seed", seed_result["seed"])
+        extended["results"].append(reconstruct_seed(seed_result, cfg))
+
+    with open(OUT_JSON, "w") as f:
+        json.dump(extended, f, indent=2)
+    print("wrote", OUT_JSON)
+    return extended
 
 
-def retrain_distance(theta_unlearned, theta_oracle) -> float:
-    """L2 distance in parameter space to the full-retrain oracle -- the
-    standard closeness-to-exact-unlearning proxy."""
-    return float(np.linalg.norm(theta_unlearned - theta_oracle))
-
-
-def membership_inference_advantage(vqc: VQC, theta, forgotten_client, held_out_clients, seed=0):
-    """Shadow-model membership-inference attack (Shokri et al. 2017 style;
-    Appendix D), matching the paper: a logistic-regression attacker is
-    trained on the target model's output confidence to distinguish (a) the
-    forgotten client's *training* samples (members) from (b) samples from
-    clients that were genuinely never trained on (non-members: retained
-    clients' test splits).
-
-    The attacker's single input feature is confidence = |p - 0.5| * 2,
-    exactly as described in Appendix D. We fit a one-dimensional
-    `sklearn.linear_model.LogisticRegression` on this feature and evaluate
-    it on a held-out split of the same member/non-member pool, then report
-    the AUC and membership advantage = 2*(attack accuracy - 0.5) of that
-    fitted attacker, i.e. Appendix D's "logistic-regression shadow-model
-    attacker" is instantiated directly rather than approximated by ranking
-    the raw confidence score.
-
-    Advantage = 2*(AUC - 0.5): 0 means the attacker cannot distinguish
-    members from non-members (good forgetting); 1 means perfect membership
-    leakage.
-    """
-    rng = np.random.default_rng(seed)
-
-    member_X = forgotten_client.X_train
-    non_member_X = np.concatenate([c.X_test for c in held_out_clients], axis=0)
-
-    n = min(len(member_X), len(non_member_X))
-    if n < 4:
-        return {"advantage": 0.0, "attack_auc": 0.5, "roc": None}
-
-    idx_m = rng.choice(len(member_X), size=n, replace=False)
-    idx_n = rng.choice(len(non_member_X), size=n, replace=False)
-
-    member_conf = np.abs(vqc.predict_proba(theta, member_X[idx_m]) - 0.5) * 2
-    non_member_conf = np.abs(vqc.predict_proba(theta, non_member_X[idx_n]) - 0.5) * 2
-
-    scores = np.concatenate([member_conf, non_member_conf]).reshape(-1, 1)
-    labels = np.concatenate([np.ones(n), np.zeros(n)])  # 1 = member
-
-    if len(np.unique(labels)) < 2:
-        return {"advantage": 0.0, "attack_auc": 0.5, "roc": None}
-
-    # Shuffle, then split into an attacker-training half and an
-    # attacker-evaluation half (Shokri et al. shadow-model protocol:
-    # the attacker is *fit*, then evaluated on held-out members/non-members).
-    order = rng.permutation(len(labels))
-    scores, labels = scores[order], labels[order]
-    split = len(labels) // 2
-    fit_X, fit_y = scores[:split], labels[:split]
-    eval_X, eval_y = scores[split:], labels[split:]
-
-    if len(np.unique(fit_y)) < 2 or len(np.unique(eval_y)) < 2:
-        # Degenerate small-sample split: fall back to fitting and
-        # evaluating on the full pool rather than failing the metric.
-        fit_X, fit_y, eval_X, eval_y = scores, labels, scores, labels
-
-    attacker = LogisticRegression()
-    attacker.fit(fit_X, fit_y)
-    attack_scores = attacker.predict_proba(eval_X)[:, 1]
-
-    auc = roc_auc_score(eval_y, attack_scores)
-    fpr, tpr, _ = roc_curve(eval_y, attack_scores)
-    advantage = float(2 * (auc - 0.5))
-    return {"advantage": advantage, "attack_auc": float(auc), "roc": (fpr.tolist(), tpr.tolist())}
-
-
-def forgetting_score(vqc: VQC, theta, theta_oracle, forgotten_client) -> float:
-    """Forgetting score, matching the paper's own definition of this metric
-    (Section 5.4: "a forgetting score computed as the output-distribution
-    divergence between the unlearned model and the full-retraining oracle
-    on the forgotten client's data, where lower values indicate a closer
-    match to exact unlearning"; Appendix D: "the mean absolute difference
-    between the unlearned model's and the oracle model's predicted risk
-    probabilities on the forgotten client's held-out instances").
-
-        forgetting_score = mean_x |p_theta(x) - p_theta_oracle(x)|,
-        x in forgotten_client.X_test
-
-    Lower is better (Table 3's "Forgetting \u2193"): a value near 0 means the
-    unlearned model's predictions on the forgotten client's data are
-    indistinguishable from a model that never saw that client, i.e. close
-    to exact unlearning.
-
-    NOTE: an earlier revision of this function computed
-    `1 - |membership_advantage|` instead -- a membership-inference-derived
-    quantity that does not correspond to any formula stated in the paper,
-    and whose own "higher is better" semantics directly contradicted the
-    "Forgetting \u2193" (lower-is-better) column header used throughout the
-    paper's tables and text (e.g. "producing a lower forgetting score ...
-    than the oracle" cited as an improvement). That mismatch has been
-    corrected here; membership-inference results are reported separately
-    via `membership_inference_advantage` / `attack_auc` (Table 5), which is
-    unaffected by this change.
-    """
-    prob = vqc.predict_proba(theta, forgotten_client.X_test)
-    prob_oracle = vqc.predict_proba(theta_oracle, forgotten_client.X_test)
-    return float(np.mean(np.abs(prob - prob_oracle)))
-
-
-def evaluate_method(vqc, theta, theta_oracle, retained_clients, forgotten_client, seed=0):
-    X_ret, y_ret = np.concatenate([c.X_test for c in retained_clients]), \
-        np.concatenate([c.y_test for c in retained_clients])
-
-    mi = membership_inference_advantage(vqc, theta, forgotten_client, retained_clients, seed=seed)
-
-    return {
-        "utility_accuracy": utility_accuracy(vqc, theta, X_ret, y_ret),
-        "utility_auroc": utility_auroc(vqc, theta, X_ret, y_ret),
-        # forgetting_score = mean |p - p_oracle| on the forgotten client's
-        # held-out data (Section 5.4 / Appendix D); see docstring above.
-        "forgetting_score": forgetting_score(vqc, theta, theta_oracle, forgotten_client),
-        "membership_advantage": mi["advantage"],
-        "attack_auc": mi["attack_auc"],
-        "retrain_distance": retrain_distance(theta, theta_oracle),
-        "roc": mi["roc"],
-    }
+if __name__ == "__main__":
+    run()
