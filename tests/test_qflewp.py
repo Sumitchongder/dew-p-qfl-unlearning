@@ -29,6 +29,32 @@ def test_circuit_is_unitary():
     assert np.allclose(norms, 1.0, atol=1e-8)
 
 
+def test_qiskit_numpy_backend_equivalence():
+    """The default Qiskit backend and the fast numpy backend must simulate
+    the identical circuit and agree to floating-point precision -- the
+    numpy path is a validated performance backend, not a different method.
+    """
+    theta_seed, x_seed = 3, 7
+    vqc_qiskit = VQC(n_qubits=4, n_layers=3, n_features=4, backend="qiskit")
+    vqc_numpy = VQC(n_qubits=4, n_layers=3, n_features=4, backend="numpy")
+
+    theta = vqc_qiskit.initial_weights(seed=theta_seed)
+    X = np.random.default_rng(x_seed).uniform(-1, 1, size=(6, 4))
+
+    state_q, post_q = vqc_qiskit.forward_full(theta, X)
+    state_n, post_n = vqc_numpy.forward_full(theta, X)
+
+    assert np.allclose(state_q, state_n, atol=1e-10)
+    for layer in range(vqc_qiskit.n_layers):
+        assert np.allclose(post_q[layer], post_n[layer], atol=1e-10)
+
+    assert np.allclose(
+        vqc_qiskit.predict_proba(theta, X),
+        vqc_numpy.predict_proba(theta, X),
+        atol=1e-10,
+    )
+
+
 def test_parameter_count_matches_ansatz():
     vqc = VQC(n_qubits=4, n_layers=3, n_features=4)
     assert vqc.num_parameters == 4 * 2 * 3  # RY + RZ per qubit per layer
