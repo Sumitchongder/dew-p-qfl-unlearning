@@ -27,7 +27,7 @@ def pruning_fraction_sweep(cfg, seed=0, fractions=(0.0, 0.1, 0.2, 0.3, 0.4, 0.5,
         n_features=cfg["n_features"], non_iid_strength=cfg["non_iid_strength"],
         noise=cfg["noise"], seed=1000 + seed,
     )
-    vqc = VQC(n_qubits=cfg["n_qubits"], n_layers=cfg["n_layers"], n_features=cfg["n_features"])
+    vqc = VQC(n_qubits=cfg["n_qubits"], n_layers=cfg["n_layers"], n_features=cfg["n_features"], backend="numpy")
 
     theta_full, _ = fedavg_train(vqc, clients, n_rounds=cfg["n_rounds"],
                                   local_epochs=cfg["local_maxiter"], seed=seed)
@@ -76,7 +76,7 @@ def ablation_non_iid(cfg, seed=0, levels=(0.2, 0.9)):
             n_features=c2["n_features"], non_iid_strength=level,
             noise=c2["noise"], seed=2000 + seed,
         )
-        vqc = VQC(n_qubits=c2["n_qubits"], n_layers=c2["n_layers"], n_features=c2["n_features"])
+        vqc = VQC(n_qubits=c2["n_qubits"], n_layers=c2["n_layers"], n_features=c2["n_features"], backend="numpy")
         theta_full, _ = fedavg_train(vqc, clients, n_rounds=c2["n_rounds"],
                                       local_epochs=c2["local_maxiter"], seed=seed)
         forgotten = clients[c2["forget_client"]]
@@ -105,7 +105,7 @@ def ablation_num_clients(cfg, seed=0, levels=(3, 5, 7)):
             n_features=c2["n_features"], non_iid_strength=c2["non_iid_strength"],
             noise=c2["noise"], seed=3000 + seed,
         )
-        vqc = VQC(n_qubits=c2["n_qubits"], n_layers=c2["n_layers"], n_features=c2["n_features"])
+        vqc = VQC(n_qubits=c2["n_qubits"], n_layers=c2["n_layers"], n_features=c2["n_features"], backend="numpy")
         theta_full, _ = fedavg_train(vqc, clients, n_rounds=c2["n_rounds"],
                                       local_epochs=c2["local_maxiter"], seed=seed)
         forgotten = clients[0]
@@ -129,7 +129,7 @@ def scalability_sweep(seed=0, qubit_levels=(3, 4, 5, 6)):
     """Circuit-evaluation cost vs qubit count (Figure 9 / Table 6)."""
     rows = []
     for nq in qubit_levels:
-        vqc = VQC(n_qubits=nq, n_layers=3, n_features=nq)
+        vqc = VQC(n_qubits=nq, n_layers=3, n_features=nq, backend="numpy")
         theta = vqc.initial_weights(seed=seed)
         X = np.random.default_rng(seed).uniform(-1, 1, size=(40, nq))
 
