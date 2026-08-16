@@ -125,6 +125,51 @@ def von_neumann_entropy(rho: np.ndarray) -> float:
     return float(-np.sum(eigvals * np.log2(eigvals)))
 
 
+def reduced_density_matrix_2q(state: np.ndarray, qubit_a: int, qubit_b: int) -> np.ndarray:
+    """Average (over the batch) two-qubit reduced density matrix for the
+    pair (qubit_a, qubit_b), obtained by tracing out every other qubit.
+
+    Basis ordering within the returned 4x4 matrix is
+    |00>, |01>, |10>, |11> in (qubit_a, qubit_b) order. Indices of the full
+    statevector are grouped by their (qubit_a, qubit_b) bit values; because
+    those two bits are independent of all remaining ("traced-out") bits,
+    filtering the full index array by a fixed (a, b) value preserves the
+    relative ordering of the traced-out bits identically across all four
+    groups, so the four column blocks below are already aligned term-by-term
+    and can be paired directly without extra bookkeeping.
+    """
+    dim = state.shape[1]
+    idx = np.arange(dim)
+    bit_a = (idx >> qubit_a) & 1
+    bit_b = (idx >> qubit_b) & 1
+    ab = bit_a * 2 + bit_b
+
+    cols = [state[:, idx[ab == k]] for k in range(4)]
+
+    rho = np.zeros((4, 4), dtype=complex)
+    for i in range(4):
+        for j in range(4):
+            rho[i, j] = np.mean(np.sum(cols[i] * np.conj(cols[j]), axis=1))
+    return rho
+
+
+def wootters_concurrence(rho: np.ndarray) -> float:
+    """Wootters concurrence (Wootters, PRL 80, 2245 (1998)) of a two-qubit
+    density matrix `rho` (4x4, basis order |00>,|01>,|10>,|11>).
+    """
+    sigma_y = np.array([[0, -1j], [1j, 0]], dtype=complex)
+    yy = np.kron(sigma_y, sigma_y)
+    rho_tilde = yy @ np.conj(rho) @ yy
+    r_mat = rho @ rho_tilde
+
+    eigvals = np.linalg.eigvals(r_mat)
+    eigvals = np.sqrt(np.clip(eigvals.real, 0.0, None))
+    eigvals = np.sort(eigvals)[::-1]
+
+    c = eigvals[0] - eigvals[1] - eigvals[2] - eigvals[3]
+    return float(max(0.0, c))
+
+
 @dataclass
 class ParameterInfo:
     index: int
