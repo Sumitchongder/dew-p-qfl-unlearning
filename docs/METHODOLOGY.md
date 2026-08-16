@@ -24,13 +24,30 @@ radians was selected empirically (see `docs/METHODOLOGY.md#7`) to avoid the
 encoding aliasing around the Bloch sphere for feature magnitudes beyond
 roughly `[-2, 2]`.
 
-State evolution is implemented directly in NumPy (`apply_1q`, `apply_cnot`
-in `circuit.py`) rather than via a general-purpose simulator, batched over
-the full sample batch simultaneously. This is mathematically identical to
-simulating the equivalent Qiskit circuit (see `q1_deliverables.fig02_circuit_architecture`
-for the Qiskit rendering used only for the architecture figure) but is
-substantially faster for repeated parameter-shift evaluations at this qubit
-count.
+State evolution is implemented in Qiskit by default (`VQC(backend="qiskit")`,
+the default): `VQC._build_qiskit_circuit` constructs an actual
+`qiskit.QuantumCircuit` per sample with the gate sequence above, and
+`qiskit.quantum_info.Statevector.from_instruction` evolves it, matching the
+manuscript's statement that the pipeline is implemented in Qiskit.
+
+A second, `VQC(backend="numpy")`, implements the identical gate sequence as
+batched dense-matrix contractions over the whole sample mini-batch at once
+(`apply_1q`, `apply_cnot` in `circuit.py`) rather than one `QuantumCircuit`
+per sample. `tests/test_qflewp.py::test_qiskit_numpy_backend_equivalence`
+checks both backends produce identical statevectors (to floating-point
+precision, `atol=1e-10`) for the same `(theta, X)` input, so this is a
+performance backend for the same method, not an alternative method: it
+exists because per-sample `QuantumCircuit` construction and
+`Statevector.from_instruction` calls are the dominant cost of parameter-shift
+training and QFIM/entanglement estimation at this qubit count, and running
+the full federated-training + unlearning pipeline (thousands of circuit
+evaluations per seed) through genuine per-sample Qiskit simulation is
+substantially slower without changing any reported number. Large sweeps
+(`scripts/run_sweeps.py`, multi-seed `scripts/run_main_experiment.py` runs)
+default to the numpy backend for this reason; the Qiskit backend remains
+the one used to verify correctness (see the backend-equivalence test above)
+and is the one referenced by the manuscript's circuit-architecture figure
+(`q1_deliverables.fig02_circuit_architecture`).
 
 Prediction: `<Z_0>` expectation value is mapped to a class probability via
 `p = (1 + <Z_0>) / 2`.
@@ -196,3 +213,4 @@ run.
   which depends on the host CPU; re-running `scripts/run_reconstruction.py`
   on different hardware will reproduce the same accuracy/forgetting/
   retrain-distance numbers but different absolute seconds.
+
