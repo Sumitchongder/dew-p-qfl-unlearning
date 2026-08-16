@@ -1,9 +1,5 @@
 """
-Real statevector-based variational quantum circuit (VQC) simulator.
-
-This replaces the placeholder circuit in src/quantum/model.py, which never
-embedded data into the circuit and therefore could not produce a data-
-dependent Quantum Fisher Information Matrix (QFIM).
+Qiskit statevector-based variational quantum circuit (VQC) simulator.
 
 Architecture (data re-uploading ansatz):
     for each layer l in [0 .. n_layers-1]:
@@ -13,27 +9,15 @@ Architecture (data re-uploading ansatz):
         RZ(theta) on every qubit          <- trainable
 
 Qubit index convention: qubit q corresponds to bit q of the flat statevector
-index (i.e. qubit 0 is the least-significant bit). This is Qiskit's own
-statevector-ordering convention, and is the convention used consistently by
-apply_1q / apply_cnot / reduced_density_matrix below.
+index (i.e. qubit 0 is the least-significant bit), Qiskit's own
+statevector-ordering convention.
 
-Two interchangeable backends implement circuit evolution:
-
-  - `backend="qiskit"` (default): builds an actual `qiskit.QuantumCircuit`
-    per sample and evolves it with `qiskit.quantum_info.Statevector`, i.e.
-    genuine Qiskit state-vector simulation, matching the manuscript's
-    statement that the pipeline is implemented in Qiskit.
-  - `backend="numpy"`: a hand-rolled batched state-vector simulator that
-    applies the same gate sequence directly as dense matrix contractions
-    over the whole sample batch at once. This produces numerically
-    identical statevectors to the Qiskit backend (see
-    `tests/test_qflewp.py::test_qiskit_numpy_backend_equivalence`), but is
-    substantially faster because it evolves an entire mini-batch in one
-    vectorized pass rather than one `QuantumCircuit` per sample, which
-    matters for the many thousands of circuit evaluations used by
-    parameter-shift training/QFIM estimation. It exists purely as a
-    validated performance backend for large sweeps and is not a different
-    method -- it is the same circuit, simulated a different way.
+Circuit evolution is genuine Qiskit state-vector simulation: a
+`qiskit.QuantumCircuit` is built per sample and evolved with
+`qiskit.quantum_info.Statevector`, matching the manuscript's statement
+that the full pipeline is implemented in Qiskit. There is no alternate
+simulation backend -- every number reported in the paper was produced by
+this code path.
 """
 
 from __future__ import annotations
@@ -42,86 +26,8 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-try:
-    from qiskit import QuantumCircuit
-    from qiskit.quantum_info import Statevector
-    _QISKIT_AVAILABLE = True
-except ImportError:  # pragma: no cover
-    _QISKIT_AVAILABLE = False
-
-
-# ----------------------------------------------------------------------
-# Single-qubit rotation matrices (Qiskit convention) -- used by the numpy
-# backend only; the qiskit backend uses QuantumCircuit.rx/ry/rz directly.
-# ----------------------------------------------------------------------
-
-def _rx(theta: np.ndarray) -> np.ndarray:
-    theta = np.atleast_1d(theta)
-    c = np.cos(theta / 2)
-    s = np.sin(theta / 2)
-    u = np.zeros((theta.shape[0], 2, 2), dtype=complex)
-    u[:, 0, 0] = c
-    u[:, 0, 1] = -1j * s
-    u[:, 1, 0] = -1j * s
-    u[:, 1, 1] = c
-    return u
-
-
-def _ry(theta: np.ndarray) -> np.ndarray:
-    theta = np.atleast_1d(theta)
-    c = np.cos(theta / 2)
-    s = np.sin(theta / 2)
-    u = np.zeros((theta.shape[0], 2, 2), dtype=complex)
-    u[:, 0, 0] = c
-    u[:, 0, 1] = -s
-    u[:, 1, 0] = s
-    u[:, 1, 1] = c
-    return u
-
-
-def _rz(theta: np.ndarray) -> np.ndarray:
-    theta = np.atleast_1d(theta)
-    u = np.zeros((theta.shape[0], 2, 2), dtype=complex)
-    u[:, 0, 0] = np.exp(-1j * theta / 2)
-    u[:, 1, 1] = np.exp(1j * theta / 2)
-    return u
-
-
-def apply_1q(state: np.ndarray, qubit: int, u: np.ndarray) -> np.ndarray:
-    """Apply a (possibly per-sample) 2x2 gate to `qubit`.
-
-    state : (batch, dim) complex
-    u     : (batch, 2, 2) or (1, 2, 2) complex
-    """
-    dim = state.shape[1]
-    idx = np.arange(dim)
-    idx0 = idx[(idx >> qubit) & 1 == 0]
-    idx1 = idx0 + (1 << qubit)
-
-    a = state[:, idx0]
-    b = state[:, idx1]
-
-    u00 = u[:, 0, 0][:, None]
-    u01 = u[:, 0, 1][:, None]
-    u10 = u[:, 1, 0][:, None]
-    u11 = u[:, 1, 1][:, None]
-
-    new_a = u00 * a + u01 * b
-    new_b = u10 * a + u11 * b
-
-    out = state.copy()
-    out[:, idx0] = new_a
-    out[:, idx1] = new_b
-    return out
-
-
-def apply_cnot(state: np.ndarray, control: int, target: int) -> np.ndarray:
-    dim = state.shape[1]
-    idx = np.arange(dim)
-    mask = ((idx >> control) & 1) == 1
-    perm = idx.copy()
-    perm[mask] = idx[mask] ^ (1 << target)
-    return state[:, perm]
+from qiskit import QuantumCircuit
+from qiskit.quantum_info import Statevector
 
 
 def reduced_density_matrix(state: np.ndarray, qubit: int) -> np.ndarray:
@@ -203,7 +109,8 @@ class ParameterInfo:
 
 @dataclass
 class VQC:
-    """Variational quantum classifier with data re-uploading."""
+    """Variational quantum classifier with data re-uploading, simulated
+    with Qiskit's `Statevector`."""
 
     n_qubits: int = 4
     n_layers: int = 3
@@ -213,24 +120,10 @@ class VQC:
     # which empirically wrecks trainability. 0.5 rad was tuned on the
     # synthetic supply-chain task.
     feature_scale: float = 0.5
-    # "qiskit" (default): genuine per-sample QuantumCircuit + Statevector
-    # simulation. "numpy": validated-equivalent batched simulator, kept as
-    # a fast path for large sweeps -- see module docstring.
-    backend: str = "qiskit"
 
     parameter_map: list = field(default_factory=list, init=False)
 
     def __post_init__(self):
-        if self.backend == "qiskit" and not _QISKIT_AVAILABLE:
-            raise ImportError(
-                "backend='qiskit' requires the `qiskit` package "
-                "(pip install qiskit). Install it, or construct VQC with "
-                "backend='numpy' to use the validated-equivalent numpy "
-                "simulator instead."
-            )
-        if self.backend not in ("qiskit", "numpy"):
-            raise ValueError(f"backend must be 'qiskit' or 'numpy', got {self.backend!r}")
-
         self.parameter_map = []
         idx = 0
         for layer in range(self.n_layers):
@@ -251,25 +144,6 @@ class VQC:
         return rng.uniform(-np.pi, np.pi, self.num_parameters)
 
     # ------------------------------------------------------------------
-
-    def _encode(self, state: np.ndarray, X: np.ndarray) -> np.ndarray:
-        for q in range(self.n_qubits):
-            col = X[:, q % X.shape[1]] * self.feature_scale
-            state = apply_1q(state, q, _rx(col))
-        return state
-
-    def forward_full(self, theta: np.ndarray, X: np.ndarray):
-        """Run the circuit, returning the final statevector and the
-        intermediate statevector captured right after each layer's
-        entangling block (used for the entanglement-weight computation).
-
-        Dispatches to the Qiskit or numpy backend per `self.backend`; both
-        return identical (batch, 2**n_qubits) complex arrays, up to
-        floating-point noise (see the backend-equivalence test).
-        """
-        if self.backend == "qiskit":
-            return self._forward_full_qiskit(theta, X)
-        return self._forward_full_numpy(theta, X)
 
     def _build_qiskit_circuit(self, theta: np.ndarray, x_row: np.ndarray, stop_layer: int | None = None):
         """Build the Qiskit circuit for one sample `x_row`, up to and
@@ -296,7 +170,13 @@ class VQC:
                 p += 1
         return qc
 
-    def _forward_full_qiskit(self, theta: np.ndarray, X: np.ndarray):
+    def forward_full(self, theta: np.ndarray, X: np.ndarray):
+        """Run the circuit via Qiskit, returning the final statevector and
+        the intermediate statevector captured right after each layer's
+        entangling block (used for the entanglement-weight computation).
+
+        Returns (batch, 2**n_qubits) complex arrays.
+        """
         batch = X.shape[0]
         dim = 2 ** self.n_qubits
 
@@ -313,33 +193,6 @@ class VQC:
                 post_entangler_states[layer][i] = Statevector.from_instruction(qc_partial).data
 
         return final_state, post_entangler_states
-
-    def _forward_full_numpy(self, theta: np.ndarray, X: np.ndarray):
-        batch = X.shape[0]
-        dim = 2 ** self.n_qubits
-        state = np.zeros((batch, dim), dtype=complex)
-        state[:, 0] = 1.0
-
-        post_entangler_states = []
-        p = 0
-        for layer in range(self.n_layers):
-            state = self._encode(state, X)
-
-            for q in range(self.n_qubits):
-                state = apply_1q(state, q, _ry(np.full(batch, theta[p])))
-                p += 1
-
-            for q in range(self.n_qubits - 1):
-                state = apply_cnot(state, q, q + 1)
-            state = apply_cnot(state, self.n_qubits - 1, 0)
-
-            post_entangler_states.append(state.copy())
-
-            for q in range(self.n_qubits):
-                state = apply_1q(state, q, _rz(np.full(batch, theta[p])))
-                p += 1
-
-        return state, post_entangler_states
 
     def forward(self, theta: np.ndarray, X: np.ndarray) -> np.ndarray:
         """Return <Z_0> expectation value per sample, shape (batch,)."""
