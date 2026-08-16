@@ -187,6 +187,31 @@ pruned parameters frozen at exactly zero.
   logistic-regression attacker described in Appendix D; the two are
   numerically identical in AUC for a single monotonic feature, but the
   current code instantiates the attacker described in the paper directly.)
+
+  **Two distinct "forgetting" formulas appear in the manuscript, and the
+  code now implements both under separate keys, rather than one name
+  silently resolving to two different numbers:**
+
+  - `evaluate_method(...)["forgetting_score"]` = `1 - |membership_advantage|`.
+    This is the metric that actually produced every number in Tables 3-9
+    and Figure 4b (whose y-axis is literally labelled "Forgetting score
+    (1 - |MI advantage|)"); e.g. `1 - |-0.322| = 0.678` for QFL-EWP and
+    `1 - |-0.204| = 0.796` for full retraining, matching Table 3 exactly.
+    Higher is better. This is Appendix D's *operational* definition and is
+    what `results/` was generated from -- do not change this formula, as
+    doing so would silently invalidate the frozen `results/` artifacts and
+    every p-value in Table 4.
+  - `evaluate_method(...)["forgetting_output_divergence"]`
+    (`output_divergence_forgetting_score` in `evaluate.py`) = the mean
+    absolute difference between the unlearned and oracle models' predicted
+    probabilities on the forgotten client's held-out data, i.e.
+    `mean_i |p_unlearned(x_i) - p_oracle(x_i)|`. This matches Section
+    5.4's prose description ("output-distribution divergence between the
+    unlearned model and theta_retrain on the forgotten client's data")
+    literally. Lower is better -- the opposite direction from
+    `forgetting_score`. This metric is *not* used anywhere in `results/`;
+    it is provided in addition so the code also directly implements the
+    metric as worded in the paper's main text.
 - **Retrain distance**: `||theta_method - theta_oracle||_2`, the standard
   parameter-space proxy for how close an unlearning method is to exact
   unlearning (a genuine from-scratch retrain excluding the forgotten
@@ -230,4 +255,3 @@ run.
   which depends on the host CPU; re-running `scripts/run_reconstruction.py`
   on different hardware will reproduce the same accuracy/forgetting/
   retrain-distance numbers but different absolute seconds.
-
