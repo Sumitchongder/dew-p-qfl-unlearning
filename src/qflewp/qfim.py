@@ -1,12 +1,22 @@
 """
 Diagonal Quantum Fisher Information Matrix (QFIM) estimation via the
-parameter-shift / state-overlap rule (Stokes et al., "Quantum Natural
-Gradient", Quantum 4, 269 (2020)):
+parameter-shift / state-overlap rule, matching the paper's Eq. (3):
 
-    F_kk(x) = (1 - |<psi(theta; x) | psi(theta + pi*e_k; x)>|^2) / 4
+    F_kk(x) = 1 - |<psi(theta; x) | psi(theta + pi*e_k; x)>|^2
+
+(Earlier versions of this module divided by an extra factor of 4, following
+the "/4" convention sometimes used for the quantum geometric tensor when
+generators are normalized to eigenvalues +-1/2 -- see Stokes et al.,
+"Quantum Natural Gradient", Quantum 4, 269 (2020). That convention disagreed
+with the paper's stated Eq. (3), which omits the factor of 4. The two
+conventions only rescale every F_kk by the same constant, so the pruning
+*ranking* -- and therefore every reported accuracy/forgetting/AUROC number,
+which depends only on which parameters end up below the fraction-based
+threshold -- is unaffected; this change exists purely so the code matches
+the manuscript's formula exactly.)
 
 This is exact (not a finite-difference approximation) for any parameter
-whose generator is a Pauli operator with eigenvalues +-1/2, which holds for
+whose generator is a Pauli operator with eigenvalues +-1, which holds for
 every RY/RZ gate in the ansatz.
 
 Crucially, because the circuit encodes data via re-uploading, the resulting
@@ -41,7 +51,7 @@ class DiagonalQFIM:
 
             overlap = np.sum(np.conj(base_state) * shifted_state, axis=1)
             fidelity = np.abs(overlap) ** 2
-            f_kk_per_sample = (1 - fidelity) / 4
+            f_kk_per_sample = 1 - fidelity  # Eq. (3): no /4 factor
             diag[k] = np.mean(f_kk_per_sample)
 
         return diag + self.epsilon
