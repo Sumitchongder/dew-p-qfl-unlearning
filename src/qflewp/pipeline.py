@@ -49,11 +49,10 @@ def run_single_seed(seed: int, cfg: dict) -> dict:
         n_features=cfg["n_features"], non_iid_strength=cfg["non_iid_strength"],
         noise=cfg["noise"], seed=1000 + seed,
     )
-    # backend="numpy": validated bit-identical to the default Qiskit
-    # backend (tests/test_qflewp.py::test_qiskit_numpy_backend_equivalence)
-    # but far faster for the thousands of circuit evaluations a full
-    # training + unlearning run requires; see docs/METHODOLOGY.md#1.
-    vqc = VQC(n_qubits=cfg["n_qubits"], n_layers=cfg["n_layers"], n_features=cfg["n_features"], backend="numpy")
+    # Genuine Qiskit Statevector simulation (src/qflewp/circuit.py), matching
+    # the manuscript's statement that the full pipeline is implemented in
+    # Qiskit -- see docs/METHODOLOGY.md#1.
+    vqc = VQC(n_qubits=cfg["n_qubits"], n_layers=cfg["n_layers"], n_features=cfg["n_features"])
 
     theta_full, hist_full = fedavg_train(
         vqc, clients, n_rounds=cfg["n_rounds"], local_epochs=cfg["local_maxiter"], seed=seed,
