@@ -159,15 +159,32 @@ s_k = w_ent(k) * F_kk^(j)
 where `F_kk^(j)` is the diagonal Quantum Fisher Information entry for
 parameter `k`, estimated via the exact parameter-shift rule and averaged
 over client `j`'s own data (Eq. (3), no `/4` factor, matching the
-manuscript exactly), and `w_ent(k)` is the mean pairwise Wootters
-concurrence across the CNOT-coupled qubit pairs of the layer parameter
-`k`'s gate sits in (Eq. (4); the von Neumann entropy variant from Appendix
-A.2 is available as `EntanglementAnalyzer(vqc, method="von_neumann_entropy")`).
-Parameters with the lowest `s_k` are pruned (reset to a fixed reference
-value, equivalent to replacing the gate with the identity), and the
-surviving parameters are briefly re-optimized on the retained clients
-only. Full formulas, the gradient/QFIM derivations, and the five baseline
-methods this is compared against are documented in
+manuscript exactly), and `w_ent(k)` is the entanglement weight for the
+layer parameter `k`'s gate sits in. **`w_ent(k)` has exactly one main
+definition and one ablation -- do not swap them when reproducing a
+figure:**
+
+```
+Main EWP method (Eq. 4, Table 3-9, `EntanglementAnalyzer` default):
+    w_ent(k) = mean pairwise Wootters concurrence
+               over the CNOT-coupled qubit pairs of layer l(k)
+    -> EntanglementAnalyzer(vqc)  # or explicitly method="concurrence"
+
+Ablation only (Appendix A.2, Figure 8b):
+    w_ent(k) = mean single-qubit von Neumann entropy
+               of qubit q's reduced state in layer l(k)
+    -> EntanglementAnalyzer(vqc, method="von_neumann_entropy")
+```
+
+Every number in `results/tables/table03_baseline_comparison.csv` (and
+every other headline table) was produced with the concurrence definition;
+the entropy variant is only ever used to draw Figure 8b, never to score
+or prune parameters for the reported results. Parameters with the lowest
+`s_k` are pruned (reset to a fixed reference value, equivalent to
+replacing the gate with the identity), and the surviving parameters are
+briefly re-optimized on the retained clients only. Full formulas, the
+gradient/QFIM derivations, and the five baseline methods this is compared
+against are documented in
 [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md).
 
 ## Reproducibility note
@@ -249,4 +266,3 @@ The authors also acknowledge the collaborative research environment provided thr
 ## License
 
 Released under the [MIT License](LICENSE).
-
