@@ -29,8 +29,9 @@ The released repository includes complete source code, experiment scripts, HPC s
 - [Method summary](#method-summary)
 - [Results at a glance](#results-at-a-glance)
 - [Extending this codebase](#extending-this-codebase)
-- [Reproducibility and honesty notes](#reproducibility-and-honesty-notes)
+- [Reproducibility](#reproducibility)
 - [Citation](#citation)
+- [Acknowledgements](#acknowledgements)
 - [License](#license)
 
 ---
@@ -216,6 +217,12 @@ If this repository or its results are useful to you, please cite it using
 the metadata in [`CITATION.cff`](CITATION.cff) (also exposed via GitHub's
 "Cite this repository" button), and cite the accompanying paper once
 published.
+
+## Acknowledgements
+
+This work was carried out as part of the **QIntern 2026 summer quantum research internship programme** organized by the **QWorld Association** under the **QResearch Department**. The research was conducted under project **QI26_22: Dynamic Entanglement Weighted Pruning for QFL-Based Supply Chain Risk Unlearning**, with **Sumit Chongder** serving as the project mentor and **Aditya Kumar** serving as the intern.
+
+The authors also acknowledge the collaborative research environment provided through the QIntern 2026 programme, which supported the development and discussion of the ideas presented in this work.
 
 ## License
 
