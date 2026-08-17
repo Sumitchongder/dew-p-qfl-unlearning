@@ -67,7 +67,7 @@ The released repository includes complete source code, experiment scripts, HPC s
 ## Quickstart
 
 ```bash
-git clone https://github.com/<your-username>/dew-p-qfl-unlearning.git
+git clone https://github.com/Sumitchongder/dew-p-qfl-unlearning.git
 cd dew-p-qfl-unlearning
 
 python3 -m venv venv
