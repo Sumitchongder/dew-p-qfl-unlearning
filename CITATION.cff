@@ -9,7 +9,7 @@ authors:
 version: 1.0.0
 date-released: 2026-07-14
 license: MIT
-repository-code: "https://github.com/<your-username>/dew-p-qfl-unlearning"
+repository-code: "https://github.com/Sumitchongder/dew-p-qfl-unlearning"
 keywords:
   - quantum machine learning
   - quantum federated learning
