@@ -44,14 +44,6 @@ implemented in Qiskit. There is no alternate simulation backend; every
 number reported in the paper (`results/`) was produced by this code path,
 including the runtime figures in Table 6/Figure 6.
 
-(An earlier revision of this module additionally offered a hand-rolled
-batched NumPy statevector simulator, selected by default for speed in
-`pipeline.py`/`sweeps.py`/`reconstruct.py`, while the manuscript states the
-pipeline is implemented in Qiskit. That backend and the corresponding
-`VQC(backend=...)` argument have been removed so that the executed code
-path matches the manuscript's stated implementation exactly, rather than
-relying on an equivalence argument between two simulators.)
-
 Prediction: `<Z_0>` expectation value is mapped to a class probability via
 `p = (1 + <Z_0>) / 2`.
 
