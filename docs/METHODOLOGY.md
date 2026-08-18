@@ -87,9 +87,7 @@ evaluations reusing the single cached reference state, not `2` circuit
 evaluations per parameter. For a batch of `B` inputs this is
 `B * (P + 1)` state preparations in total (one reference pass per input,
 plus one shifted pass per parameter per input), before any
-simulator-level optimizations. This matches the manuscript's own reported
-QFIM circuit-evaluation counts in Table 9 (18, 24, 30, 36 for `P` = 18,
-24, 30, 36 at 3-6 qubits, i.e. `= P`, not `2P`).
+simulator-level optimizations.
 
 ## 4. Entanglement weight (`entanglement.py`)
 
