@@ -234,8 +234,6 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the PR checklist.
   has real seed-to-seed variance (visible directly in
   `table05_forgetting_comparison.csv`). This is disclosed rather than
   smoothed over, in line with the ablation-honesty goals in the paper.
-- Every figure and table is regenerated from `results/json/*.json` by
-  `scripts/generate_deliverables.py`.
 
 ## Citation
 
