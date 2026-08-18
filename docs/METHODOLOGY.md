@@ -164,17 +164,7 @@ pruned parameters frozen at exactly zero.
   (a) the forgotten client's training samples ("members") and (b) held-out
   samples from clients that genuinely never contributed to training
   ("non-members"); `sklearn.linear_model.LogisticRegression` is fit on half
-  of this pool and evaluated on the other half, and is scored by
-  `membership_advantage = 2 * (attack AUC - 0.5)` (Yeom et al., 2018 style
-  advantage statistic, using the fitted shadow attacker's AUC).
-  `forgetting_score = 1 - |membership_advantage|`, so 1.0 means the
-  attacker performs at chance.
-  The paper's Section 5.4 prose also describes
-  an output-distribution-divergence formulation of forgetting; that
-  formulation is not implemented in this codebase and no
-  `forgetting_output_divergence` key or `output_divergence_forgetting_score`
-  function exists here. Only the `1 - |membership_advantage|` metric above
-  is implemented, and it is the one `results/` was generated from.
+  of this pool and evaluated on the other half.
 - **Retrain distance**: `||theta_method - theta_oracle||_2`, the standard
   parameter-space proxy for how close an unlearning method is to exact
   unlearning (a genuine from-scratch retrain excluding the forgotten
