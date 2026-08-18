@@ -1,12 +1,3 @@
-"""
-Reconstructs per-method predictions, confusion matrices, and timings from
-the already-trained models saved in main_experiment_raw.json (theta_full,
-theta_oracle, qfim_diag, entanglement_weights are all deterministic given
-the stored seed, so no retraining of the shared federated model is
-needed — only the cheap per-method pruning/eval steps are recomputed here,
-plus a fresh timing pass for the full-retrain oracle since its cost has to
-be measured, not just its resulting parameters).
-"""
 from __future__ import annotations
 
 import json
@@ -67,9 +58,6 @@ def reconstruct_seed(seed_result: dict, cfg: dict) -> dict:
             "accuracy": utility_accuracy(vqc, theta_method, X_ret, y_ret),
             "auroc": utility_auroc(vqc, theta_method, X_ret, y_ret),
             "membership_advantage": mi["advantage"], "attack_auc": mi["attack_auc"],
-            # forgetting_score = mean |p - p_oracle| on the forgotten
-            # client's held-out data (Section 5.4 / Appendix D of the
-            # paper), NOT a function of the membership-inference result.
             "forgetting_score": forgetting_score(vqc, theta_method, theta_oracle, forgotten),
             "roc": mi["roc"],
             "retrain_distance": retrain_distance(theta_method, theta_oracle),
