@@ -209,13 +209,13 @@ retrain.
 
 ## Extending this codebase
 
-- **New ansatz**: implement an alternative to `circuit.py`'s `VQC` class
+- **Ansatz**: implement an alternative to `circuit.py`'s `VQC` class
   exposing the same `forward_full` / `predict_proba` interface; everything
   downstream (QFIM, entanglement, pruning, evaluation) is ansatz-agnostic.
-- **New dataset**: replace `data.py`'s `generate_federated_dataset` with a
+- **Dataset**: replace `data.py`'s `generate_federated_dataset` with a
   loader returning a list of `ClientDataset` objects; no other file needs
   to change.
-- **New baseline**: add a function to `pruning.py` following the
+- **Baseline**: add a function to `pruning.py` following the
   `prune_by_score(theta, scores, fraction, method_name)` pattern used by
   the existing baselines, then register it in `pipeline.run_single_seed`.
 
