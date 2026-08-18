@@ -1,13 +1,3 @@
-"""
-End-to-end experiment pipeline: dataset -> federated training -> forget
-request -> EWP + 5 baselines -> evaluation -> JSON/CSV artifacts.
-
-This is the single source of truth that produces every number that ends up
-in the paper's figures and tables. Run with:
-
-    python3 -m src.qflewp.pipeline
-"""
-
 from __future__ import annotations
 
 import json
@@ -49,9 +39,7 @@ def run_single_seed(seed: int, cfg: dict) -> dict:
         n_features=cfg["n_features"], non_iid_strength=cfg["non_iid_strength"],
         noise=cfg["noise"], seed=1000 + seed,
     )
-    # Genuine Qiskit Statevector simulation (src/qflewp/circuit.py), matching
-    # the manuscript's statement that the full pipeline is implemented in
-    # Qiskit -- see docs/METHODOLOGY.md#1.
+    
     vqc = VQC(n_qubits=cfg["n_qubits"], n_layers=cfg["n_layers"], n_features=cfg["n_features"])
 
     theta_full, hist_full = fedavg_train(
