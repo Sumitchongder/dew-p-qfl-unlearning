@@ -187,18 +187,6 @@ gradient/QFIM derivations, and the five baseline methods this is compared
 against are documented in
 [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md).
 
-## Reproducibility note
-
-The `results/` directory contains the frozen artifacts associated with the
-arXiv-submitted manuscript (accuracy 0.837, Tables 3-9, Figures 4-16).
-These files are intentionally preserved and are **not** overwritten by
-subsequent implementation corrections. The current source code includes
-corrected QFIM, entanglement, data-generation, and membership-inference
-implementations, together with a Qiskit-only circuit backend, for future
-experiments and extensions; see `docs/METHODOLOGY.md` for the distinction
-between the historical manuscript configuration and the current default
-configuration.
-
 ## Results at a glance
 
 Full numbers are in `results/tables/`; figures are in `results/figures/`.
