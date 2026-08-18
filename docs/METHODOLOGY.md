@@ -127,9 +127,7 @@ qubit `q` in layer `l` receive the same weight, but different qubits within
 a layer can differ. The paper reports the two definitions as strongly
 correlated and notes the choice does not qualitatively change the pruning
 conclusions -- but only one of them can be the score actually used in
-Eq. (5)/Table 3-9, so the code now defaults to concurrence to match the
-manuscript's main text (an earlier revision defaulted to the entropy
-variant instead).
+Eq. (5)/Table 3-9.
 
 ## 5. Pruning score and unlearning methods (`pruning.py`)
 
