@@ -161,8 +161,7 @@ parameter `k`, estimated via the exact parameter-shift rule and averaged
 over client `j`'s own data (Eq. (3), no `/4` factor, matching the
 manuscript exactly), and `w_ent(k)` is the entanglement weight for the
 layer parameter `k`'s gate sits in. **`w_ent(k)` has exactly one main
-definition and one ablation -- do not swap them when reproducing a
-figure:**
+definition and one ablation:**
 
 ```
 Main EWP method (Eq. 4, Table 3-9, `EntanglementAnalyzer` default):
