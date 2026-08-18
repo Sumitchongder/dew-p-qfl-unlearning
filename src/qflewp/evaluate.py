@@ -1,7 +1,6 @@
 """
 Evaluation suite (Table 3 in the paper): utility, forgetting / membership
-inference, and retrain distance — computed from the *actual* trained model's
-predictions, never from synthetic random numbers.
+inference, and retrain distance.
 """
 
 from __future__ import annotations
@@ -33,26 +32,7 @@ def retrain_distance(theta_unlearned, theta_oracle) -> float:
 
 
 def membership_inference_advantage(vqc: VQC, theta, forgotten_client, held_out_clients, seed=0):
-    """Shadow-model membership-inference attack (Shokri et al. 2017 style;
-    Appendix D), matching the paper: a logistic-regression attacker is
-    trained on the target model's output confidence to distinguish (a) the
-    forgotten client's *training* samples (members) from (b) samples from
-    clients that were genuinely never trained on (non-members: retained
-    clients' test splits).
-
-    The attacker's single input feature is confidence = |p - 0.5| * 2,
-    exactly as described in Appendix D. We fit a one-dimensional
-    `sklearn.linear_model.LogisticRegression` on this feature and evaluate
-    it on a held-out split of the same member/non-member pool, then report
-    the AUC and membership advantage = 2*(attack accuracy - 0.5) of that
-    fitted attacker, i.e. Appendix D's "logistic-regression shadow-model
-    attacker" is instantiated directly rather than approximated by ranking
-    the raw confidence score.
-
-    Advantage = 2*(AUC - 0.5): 0 means the attacker cannot distinguish
-    members from non-members (good forgetting); 1 means perfect membership
-    leakage.
-    """
+    
     rng = np.random.default_rng(seed)
 
     member_X = forgotten_client.X_train
@@ -99,33 +79,7 @@ def membership_inference_advantage(vqc: VQC, theta, forgotten_client, held_out_c
 
 
 def forgetting_score(vqc: VQC, theta, theta_oracle, forgotten_client) -> float:
-    """Forgetting score, matching the paper's own definition of this metric
-    (Section 5.4: "a forgetting score computed as the output-distribution
-    divergence between the unlearned model and the full-retraining oracle
-    on the forgotten client's data, where lower values indicate a closer
-    match to exact unlearning"; Appendix D: "the mean absolute difference
-    between the unlearned model's and the oracle model's predicted risk
-    probabilities on the forgotten client's held-out instances").
-
-        forgetting_score = mean_x |p_theta(x) - p_theta_oracle(x)|,
-        x in forgotten_client.X_test
-
-    Lower is better (Table 3's "Forgetting \u2193"): a value near 0 means the
-    unlearned model's predictions on the forgotten client's data are
-    indistinguishable from a model that never saw that client, i.e. close
-    to exact unlearning.
-
-    NOTE: an earlier revision of this function computed
-    `1 - |membership_advantage|` instead -- a membership-inference-derived
-    quantity that does not correspond to any formula stated in the paper,
-    and whose own "higher is better" semantics directly contradicted the
-    "Forgetting \u2193" (lower-is-better) column header used throughout the
-    paper's tables and text (e.g. "producing a lower forgetting score ...
-    than the oracle" cited as an improvement). That mismatch has been
-    corrected here; membership-inference results are reported separately
-    via `membership_inference_advantage` / `attack_auc` (Table 5), which is
-    unaffected by this change.
-    """
+   
     prob = vqc.predict_proba(theta, forgotten_client.X_test)
     prob_oracle = vqc.predict_proba(theta_oracle, forgotten_client.X_test)
     return float(np.mean(np.abs(prob - prob_oracle)))
