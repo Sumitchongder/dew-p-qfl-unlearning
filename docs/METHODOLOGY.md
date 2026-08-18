@@ -178,16 +178,7 @@ pruned parameters frozen at exactly zero.
   logistic-regression attacker described in Appendix D; the two are
   numerically identical in AUC for a single monotonic feature, but the
   current code instantiates the attacker described in the paper directly.)
-
-  `evaluate_method(...)["forgetting_score"]` = `1 - |membership_advantage|`.
-  This is the metric that actually produced every number in Tables 3-9
-  and Figure 4b (whose y-axis is literally labelled "Forgetting score
-  (1 - |MI advantage|)"); e.g. `1 - |-0.322| = 0.678` for QFL-EWP and
-  `1 - |-0.204| = 0.796` for full retraining, matching Table 3 exactly.
-  Higher is better. This is Appendix D's *operational* definition and is
-  what `results/` was generated from -- do not change this formula, as
-  doing so would silently invalidate the frozen `results/` artifacts and
-  every p-value in Table 4. The paper's Section 5.4 prose also describes
+  The paper's Section 5.4 prose also describes
   an output-distribution-divergence formulation of forgetting; that
   formulation is not implemented in this codebase and no
   `forgetting_output_divergence` key or `output_divergence_forgetting_score`
