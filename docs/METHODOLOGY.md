@@ -17,12 +17,6 @@ a single `numpy.random.Generator` seeded with `1000 + run_seed`:
 3. Draw that client's features as `x ~ N(delta_i, I_d)`.
 4. Draw labels `y ~ Bernoulli(sigma(w^T x + eps))`, `eps ~ N(0, noise^2)`.
 
-(An earlier revision used a hand-specified fixed weight vector, an added
-nonlinear interaction term `0.4 * x_0 * x_1`, and a deterministic
-`prob >= 0.5` threshold instead of step 4's genuine Bernoulli draw. That
-did not match Appendix C and has been replaced with the procedure above,
-so `data.py` now implements the same generative model the manuscript
-describes.)
 
 ## 1. Circuit model (`circuit.py`)
 
