@@ -89,10 +89,7 @@ evaluations per parameter. For a batch of `B` inputs this is
 plus one shifted pass per parameter per input), before any
 simulator-level optimizations. This matches the manuscript's own reported
 QFIM circuit-evaluation counts in Table 9 (18, 24, 30, 36 for `P` = 18,
-24, 30, 36 at 3-6 qubits, i.e. `= P`, not `2P`); an earlier version of
-this document described the cost as "two circuit evaluations per
-parameter per input", which overcounted the shared reference state and
-has been corrected here.
+24, 30, 36 at 3-6 qubits, i.e. `= P`, not `2P`).
 
 ## 4. Entanglement weight (`entanglement.py`)
 
@@ -163,8 +160,8 @@ pruned parameters frozen at exactly zero.
   from the model's actual `predict_proba` output   not resampled or
   simulated.
 - **Forgetting / privacy**: a logistic-regression shadow-model
-  membership-inference attack (Appendix D / Shokri et al., 2017 style),
-  matching the manuscript exactly. The attacker's single input feature is
+  membership-inference attack (Appendix D / Shokri et al., 2017).
+  The attacker's single input feature is
   the target model's prediction-confidence score (`|p - 0.5| * 2`) on
   (a) the forgotten client's training samples ("members") and (b) held-out
   samples from clients that genuinely never contributed to training
@@ -173,11 +170,7 @@ pruned parameters frozen at exactly zero.
   `membership_advantage = 2 * (attack AUC - 0.5)` (Yeom et al., 2018 style
   advantage statistic, using the fitted shadow attacker's AUC).
   `forgetting_score = 1 - |membership_advantage|`, so 1.0 means the
-  attacker performs at chance. (An earlier revision ranked the raw
-  confidence score directly with `roc_auc_score` rather than fitting the
-  logistic-regression attacker described in Appendix D; the two are
-  numerically identical in AUC for a single monotonic feature, but the
-  current code instantiates the attacker described in the paper directly.)
+  attacker performs at chance.
   The paper's Section 5.4 prose also describes
   an output-distribution-divergence formulation of forgetting; that
   formulation is not implemented in this codebase and no
