@@ -74,14 +74,6 @@ F_kk(x) = 1 - |<psi(theta; x) | psi(theta + pi * e_k; x)>|^2
 F_kk^(j) = mean_{x in D_j} F_kk(x)
 ```
 
-(No `/4` factor -- this matches the manuscript's Eq. (3) exactly. An
-earlier revision of this module included a `/4` scaling sometimes used for
-the quantum geometric tensor; since pruning only depends on the *ranking*
-of `F_kk` values against a fraction-based threshold, that constant never
-changed which parameters were pruned or any reported accuracy/forgetting
-number, but it did disagree with the paper's stated formula, so it has been
-removed.)
-
 This is exact, not a finite-difference approximation, and   because the
 circuit re-encodes `x` at every layer   genuinely conditions on the
 forgotten client's data distribution, which is what the pruning score
