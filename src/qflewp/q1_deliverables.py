@@ -1,12 +1,3 @@
-"""
-Produces the full Q1-journal deliverable set requested for the QFL-EWP
-paper: 10 tables (CSV) and 16 figures (PNG + PDF), built entirely from
-results/json/main_experiment_raw.json and extended_experiment.json
-(both real, measured data — nothing here is hand-typed).
-
-Run:
-    python3 -m src.qflewp.q1_deliverables
-"""
 from __future__ import annotations
 
 import json
@@ -251,7 +242,7 @@ def fig01_overall_framework():
     arrow(1.9, 3.4, 2.5, 3.0); arrow(1.9, 1.1, 2.5, 2.4)
 
     box(5.0, 3.0, 2.1, 1.0, "Diagonal QFIM\n$F_{kk}^{(j)}$ (parameter-shift)", "#DCEBFA")
-    box(5.0, 1.3, 2.1, 1.0, "Entanglement weight\n$w_{ent}(k)$ (von Neumann)", "#DCEBFA")
+    box(5.0, 1.3, 2.1, 1.0, "Entanglement weight", "#DCEBFA")
     arrow(4.4, 2.7, 5.0, 3.3); arrow(4.4, 2.1, 5.0, 1.9)
 
     box(7.6, 2.15, 1.9, 1.1, "Pruning score\n$s_k = w_{ent}(k) F_{kk}^{(j)}$\nprune $s_k \\leq \\tau$", "#FFF3CD")
