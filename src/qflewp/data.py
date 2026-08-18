@@ -1,27 +1,3 @@
-"""
-Synthetic supply-chain risk dataset generator for the QFL-EWP paper.
-
-Implements the generative procedure of Appendix C exactly:
-
-    1. Sample a single shared latent risk direction w ~ N(0, I_d).
-    2. For each client i, sample a client-specific offset
-       delta_i ~ N(0, beta^2 * I_d), where beta is the non-IID strength.
-    3. Draw each client's features as x ~ N(delta_i, I_d).
-    4. Draw labels from a logistic model,
-       y ~ Bernoulli(sigma(w^T x + eps)),  eps ~ N(0, noise^2).
-
-All draws use a single NumPy Generator seeded with `1000 + run_seed`
-(Appendix C / Table 1: "Data generation: Seeded (seed = 1000 + run seed)"),
-so the entire dataset -- including the client partition and the
-train/test split -- is exactly reproducible from the released code.
-
-(An earlier revision of this module used a hand-specified fixed weight
-vector, an added nonlinear interaction term, and a deterministic
-prob >= 0.5 threshold instead of a genuine Bernoulli draw. That did not
-match Appendix C's stated generative process and has been replaced with
-the procedure above.)
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -69,13 +45,7 @@ def generate_federated_dataset(
     noise: float = 0.2,
     seed: int = 1000,
 ):
-    """Return a list of ClientDataset, one per client, non-IID partitioned,
-    exactly following the generative procedure of Appendix C.
-
-    `seed` is expected to be called as `1000 + run_seed` by the calling
-    pipeline code (see src/qflewp/pipeline.py), matching Table 1's
-    "Data generation: Seeded (seed = 1000 + run seed)".
-    """
+   
     rng = np.random.default_rng(seed)
 
     # Step 1 (Appendix C): a single shared latent risk direction w.
