@@ -2,6 +2,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
+[![arXiv](https://img.shields.io/badge/arXiv-2608.17069-b31b1b.svg)](https://arxiv.org/abs/2608.17069)
+[![quant-ph](https://img.shields.io/badge/quant--ph-2608.17069-blueviolet.svg)](https://arxiv.org/abs/2608.17069)
+[![cs.LG](https://img.shields.io/badge/cs.LG-2608.17069-blue.svg)](https://arxiv.org/abs/2608.17069)
 
 A reference implementation of **entanglement-weighted parameter pruning**
 for selective client forgetting in quantum federated learning (QFL),
@@ -17,16 +20,21 @@ full from-scratch retrain, at a fraction of the compute cost.
 
 The released repository includes complete source code, experiment scripts, HPC submission scripts, generated figures and tables, and documentation sufficient to reproduce the published workflow.
 
+> 📄 **The accompanying paper is now live on arXiv** — see [Paper](#paper) below.
+
 ---
 
 ## Table of contents
 
+- [Paper](#paper)
 - [What's in this repository](#whats-in-this-repository)
+- [Architecture overview](#architecture-overview)
 - [Quickstart](#quickstart)
 - [Repository layout](#repository-layout)
 - [Reproducing the full result set](#reproducing-the-full-result-set)
 - [Running on an HPC cluster](#running-on-an-hpc-cluster)
 - [Method summary](#method-summary)
+- [Unlearning workflow](#unlearning-workflow)
 - [Results at a glance](#results-at-a-glance)
 - [Extending this codebase](#extending-this-codebase)
 - [Reproducibility](#reproducibility)
@@ -36,12 +44,63 @@ The released repository includes complete source code, experiment scripts, HPC s
 
 ---
 
+## Paper
+
+**Dynamic Entanglement-Weighted Pruning for Quantum Federated Unlearning in Supply-Chain Risk Prediction**
+Aditya Kumar, Sumit Chongder — *submitted 17 Aug 2026*
+
+[![arXiv](https://img.shields.io/badge/arXiv-2608.17069-b31b1b.svg?style=for-the-badge&logo=arxiv)](https://arxiv.org/abs/2608.17069)
+
+| | |
+|---|---|
+| **arXiv ID** | [arXiv:2608.17069](https://arxiv.org/abs/2608.17069) [quant-ph] |
+| **DOI** | [10.48550/arXiv.2608.17069](https://doi.org/10.48550/arXiv.2608.17069) |
+| **Subjects** | Quantum Physics (quant-ph); Machine Learning (cs.LG) |
+| **ACM classes** | I.2.6; I.2.11; C.2.4 |
+| **PDF** | [arxiv.org/pdf/2608.17069](https://arxiv.org/pdf/2608.17069) |
+
+<details>
+<summary><b>Abstract</b></summary>
+<br>
+
+Federated deployments of variational quantum classifiers are attractive
+for cross-organisation risk prediction in supply chains, because raw data
+never leaves the client, yet data-protection regulations such as the GDPR
+grant clients a right to request that their contribution be removed from
+a trained model after the fact. Retraining a federated model from scratch
+to honour such a request is correct but wasteful, and it is not obvious
+which quantum circuit parameters actually carry a given client's
+influence. We introduce Entanglement-Weighted Pruning (EWP), an
+unlearning procedure for quantum federated learning that scores every
+trainable circuit parameter with the product of two signals: the diagonal
+entry of the quantum Fisher information matrix estimated on the target
+client's data via the parameter-shift rule, and a structural entanglement
+weight associated with the parameter's gate. Parameters with the lowest
+scores are pruned, optionally followed by a short fine-tuning pass on the
+retained clients. We implement the full pipeline in Qiskit for a
+four-qubit data-re-uploading ansatz trained with FedAvg across five
+simulated supply-chain-risk clients, and benchmark EWP against full
+retraining, fine-tuning alone, random pruning, Fisher-only pruning, and
+entanglement-only pruning, over three random seeds. EWP attains a mean
+post-unlearning accuracy statistically indistinguishable from the
+full-retraining oracle, while producing a lower forgetting score and
+requiring roughly 16 times less wall-clock time. Ablations over pruning
+threshold, client count, and non-IID strength show that combining the two
+signals is necessary, as entanglement-only and Fisher-only pruning each
+substantially degrade accuracy relative to EWP.
+
+</details>
+
+*25 pages, 10 figures, 11 tables. Research carried out as part of the QIntern 2026 programme (QWorld Association).*
+
+---
+
 ## What's in this repository
 
-- **`src/qflewp/`**   the full method implementation: a data-generation
+- **`src/qflewp/`** — the full method implementation: a data-generation
   module following the manuscript's Appendix C generative procedure
   exactly, a data re-uploading variational quantum circuit simulated
-  entirely in Qiskit (matching the manuscript's stated implementation --
+  entirely in Qiskit (matching the manuscript's stated implementation —
   there is no alternate backend), a FedAvg federated trainer using exact
   parameter-shift gradients, a parameter-shift diagonal Quantum Fisher
   Information estimator, a per-gate entanglement weighting scheme (mean
@@ -50,19 +109,38 @@ The released repository includes complete source code, experiment scripts, HPC s
   pruning/unlearning algorithms (proposed method + 5 baselines), and a full
   evaluation suite (utility, a logistic-regression shadow-model
   membership-inference attack matching Appendix D, retrain-distance).
-- **`scripts/`**   thin, documented CLI entry points that call into
-  `src/qflewp/`   no logic lives in the scripts themselves.
-- **`hpc/slurm/`**   a four-stage SLURM job chain for running the full
+- **`scripts/`** — thin, documented CLI entry points that call into
+  `src/qflewp/` — no logic lives in the scripts themselves.
+- **`hpc/slurm/`** — a four-stage SLURM job chain for running the full
   experiment suite at publication scale on a shared cluster.
-- **`results/`**   every figure (`figures/`, PNG + PDF), table
+- **`results/`** — every figure (`figures/`, PNG + PDF), table
   (`tables/`, CSV + a combined Markdown export), and raw run artifact
   (`json/`) referenced in the paper, already generated and version
   controlled so you can inspect them without running anything.
-- **`tests/`**   fast (~15 s) correctness checks: circuit unitarity, QFIM
+- **`tests/`** — fast (~15 s) correctness checks: circuit unitarity, QFIM
   client-dependence, entanglement-weight differentiation, and exact
   pruning-fraction behavior.
-- **`docs/METHODOLOGY.md`**   the exact formulas and configuration schema
+- **`docs/METHODOLOGY.md`** — the exact formulas and configuration schema
   used by the code, for readers extending or auditing it.
+
+## Architecture overview
+
+Each federated round, the coordinating server broadcasts the global
+circuit parameters to every client, clients train locally on their own
+private data, and updates are aggregated back at the server. When client
+*j* issues a forgetting request, that same federation topology carries
+the request that triggers the unlearning pipeline below.
+
+<p align="center">
+  <img src="assets/federation_architecture.png" alt="Federated coordination topology: server broadcasts global parameters to clients, clients upload local updates, client j can issue a forgetting request" width="720">
+</p>
+
+<p align="center">
+  <sub><b>Figure —</b> Coordinating-server topology. The server holds
+  <code>θ<sup>(t)</sup> = Σᵢ (nᵢ/n) θᵢ<sup>(t)</sup></code>, broadcasts it
+  to all clients (blue), receives local updates (green), and can receive a
+  forgetting request from a target client such as client <i>j</i> (red).</sub>
+</p>
 
 ## Quickstart
 
@@ -88,10 +166,12 @@ python3 scripts/run_main_experiment.py --seeds 0 --n-rounds 3 --local-maxiter 8
 
 ```
 dew-p-qfl-unlearning/
+├── assets/                      # README figures (architecture diagram, workflow gif)
+│   ├── federation_architecture.png
+│   └── qfl_ewp_architecture.gif
 ├── src/qflewp/                  # method implementation (see docs/METHODOLOGY.md)
 │   ├── data.py                    # supply-chain dataset generator (Appendix C generative procedure)
 │   ├── circuit.py                 # data re-uploading VQC, Qiskit statevector sim (only backend)
-│   ├── data.py                    # synthetic non-IID supply-chain dataset generator
 │   ├── federated.py                # FedAvg + exact parameter-shift gradients
 │   ├── qfim.py                    # parameter-shift diagonal QFIM estimator
 │   ├── entanglement.py            # per-gate entanglement weights (concurrence default, entropy ablation)
@@ -134,11 +214,11 @@ python3 scripts/generate_deliverables.py                   # all 16 figures + 10
 Every stage reads/writes plain JSON or CSV under `results/`, so you can
 inspect, diff, or version-control intermediate results, and re-run only
 the stage you changed. All experiment hyperparameters are CLI flags on
-`run_main_experiment.py`   see `docs/METHODOLOGY.md#7` for the full schema.
+`run_main_experiment.py` — see `docs/METHODOLOGY.md#7` for the full schema.
 
 Default configuration runs in roughly 30-45 minutes on a single modern CPU
 core. Scale seeds/rounds/samples up for tighter confidence intervals; see
-[Reproducibility and honesty notes](#reproducibility-and-honesty-notes).
+[Reproducibility and honesty notes](#reproducibility).
 
 ## Running on an HPC cluster
 
@@ -186,6 +266,28 @@ gradient/QFIM derivations, and the five baseline methods this is compared
 against are documented in
 [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md).
 
+## Unlearning workflow
+
+The end-to-end pipeline runs in six stages, from the initial federated
+round through to the post-unlearning evaluation. Stage 6 can loop back
+into a re-formed federation with the pruned-and-fine-tuned parameters
+`θ'`.
+
+<p align="center">
+  <img src="assets/qfl_ewp_architecture.gif" alt="Six-stage DEW-P unlearning workflow: federated training, forget request, diagonal QFIM + entanglement scoring, pruning, optional fine-tuning, evaluation" width="760">
+</p>
+
+<p align="center">
+  <sub><b>Figure —</b> Stage 1: federated training (Algorithm 1). Stage 2:
+  forget request from client <i>j</i>. Stage 3: diagonal QFIM
+  <code>F<sub>kk</sub><sup>(j)</sup></code> and entanglement weight
+  <code>w<sub>ent</sub>(k)</code> (Algorithm 3). Stage 4: pruning score
+  <code>s<sub>k</sub> = w<sub>ent</sub>(k) F<sub>kk</sub><sup>(j)</sup></code>,
+  prune where <code>s<sub>k</sub> &lt; τ</code> (Algorithm 2). Stage 5:
+  optional fine-tuning on <code>D \ D<sub>j</sub></code>. Stage 6:
+  evaluation of utility, forgetting, privacy, and cost (Algorithm 4).</sub>
+</p>
+
 ## Results at a glance
 
 Full numbers are in `results/tables/`; figures are in `results/figures/`.
@@ -204,7 +306,7 @@ Headline comparison (3 seeds, mean ± std), from
 A paired t-test (`results/tables/table08_statistical_significance.csv`)
 finds no statistically significant utility gap between DEW-P and the
 full-retrain oracle, while DEW-P significantly outperforms all three
-single-signal pruning baselines   at roughly 16x the speed of a full
+single-signal pruning baselines — at roughly 16x the speed of a full
 retrain.
 
 ## Extending this codebase
@@ -221,7 +323,7 @@ retrain.
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the PR checklist.
 
-## Reproducibility 
+## Reproducibility
 
 - The default configuration uses **3 random seeds** for the main benchmark
   (compute-budget constrained for interactive reproduction). The
@@ -237,10 +339,25 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the PR checklist.
 
 ## Citation
 
-If this repository or its results are useful to you, please cite it using
-the metadata in [`CITATION.cff`](CITATION.cff) (also exposed via GitHub's
-"Cite this repository" button), and cite the accompanying paper once
-published.
+If this repository or its results are useful to you, please cite the
+accompanying paper:
+
+```bibtex
+@misc{kumar2026dewp,
+      title={Dynamic Entanglement-Weighted Pruning for Quantum Federated Unlearning in Supply-Chain Risk Prediction},
+      author={Aditya Kumar and Sumit Chongder},
+      year={2026},
+      eprint={2608.17069},
+      archivePrefix={arXiv},
+      primaryClass={quant-ph},
+      note={cs.LG},
+      url={https://arxiv.org/abs/2608.17069}
+}
+```
+
+You can also cite this software directly using the metadata in
+[`CITATION.cff`](CITATION.cff) (also exposed via GitHub's "Cite this
+repository" button).
 
 ## Acknowledgements
 
