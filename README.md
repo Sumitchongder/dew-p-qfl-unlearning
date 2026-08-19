@@ -20,13 +20,13 @@ full from-scratch retrain, at a fraction of the compute cost.
 
 The released repository includes complete source code, experiment scripts, HPC submission scripts, generated figures and tables, and documentation sufficient to reproduce the published workflow.
 
-> 📄 **The accompanying paper is now live on arXiv** — see [Paper](#paper) below.
+> 📄 **The accompanying paper is now live on arXiv** — see [arXiv paper](#paper) below.
 
 ---
 
 ## Table of contents
 
-- [Paper](#paper)
+- [arXiv paper](#paper)
 - [What's in this repository](#whats-in-this-repository)
 - [Architecture overview](#architecture-overview)
 - [Quickstart](#quickstart)
@@ -44,7 +44,7 @@ The released repository includes complete source code, experiment scripts, HPC s
 
 ---
 
-## Paper
+## arXiv paper
 
 **Dynamic Entanglement-Weighted Pruning for Quantum Federated Unlearning in Supply-Chain Risk Prediction**
 Aditya Kumar, Sumit Chongder — *submitted 17 Aug 2026*
